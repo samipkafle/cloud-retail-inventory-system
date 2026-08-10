@@ -13,3 +13,7 @@ cdk.out/
 
 # Logs
 npm-debug.log*
+
+# TypeScript compiled files
+infrastructure/cdk/**/*.js
+infrastructure/cdk/**/*.d.ts
