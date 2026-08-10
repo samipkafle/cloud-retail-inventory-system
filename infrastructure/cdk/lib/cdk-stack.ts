@@ -23,7 +23,7 @@ export class CdkStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    // Lambda function
+    // Lambda Function
     const inventoryLambda = new lambdaNodejs.NodejsFunction(
       this,
       'InventoryLambda',
@@ -44,16 +44,51 @@ export class CdkStack extends cdk.Stack {
       }
     );
 
-    // Give Lambda permission to read/write DynamoDB
+    // Give Lambda permission to read and write DynamoDB
     inventoryTable.grantReadWriteData(inventoryLambda);
 
     // API Gateway
-    const api = new apigateway.LambdaRestApi(this, 'InventoryApi', {
-      handler: inventoryLambda,
-      proxy: true,
+    const api = new apigateway.RestApi(this, 'InventoryApi', {
+      restApiName: 'InventoryApi',
     });
 
-    // Output API URL after deployment
+    // /products
+    const products = api.root.addResource('products');
+
+    // GET /products
+    products.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(inventoryLambda)
+    );
+
+    // POST /products
+    products.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(inventoryLambda)
+    );
+
+    // /products/{productId}
+    const product = products.addResource('{productId}');
+
+    // GET /products/{productId}
+    product.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(inventoryLambda)
+    );
+
+    // PUT /products/{productId}
+    product.addMethod(
+      'PUT',
+      new apigateway.LambdaIntegration(inventoryLambda)
+    );
+
+    // DELETE /products/{productId}
+    product.addMethod(
+      'DELETE',
+      new apigateway.LambdaIntegration(inventoryLambda)
+    );
+
+    // API URL output
     new cdk.CfnOutput(this, 'ApiUrl', {
       value: api.url,
       description: 'Inventory API URL',
