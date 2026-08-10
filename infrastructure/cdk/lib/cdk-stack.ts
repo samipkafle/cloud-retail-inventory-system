@@ -3,6 +3,7 @@ import { Construct } from 'constructs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as lambdaNodejs from 'aws-cdk-lib/aws-lambda-nodejs';
+import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 
 export class CdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -43,7 +44,19 @@ export class CdkStack extends cdk.Stack {
       }
     );
 
-    // Give Lambda permission to read and write to DynamoDB
+    // Give Lambda permission to read/write DynamoDB
     inventoryTable.grantReadWriteData(inventoryLambda);
+
+    // API Gateway
+    const api = new apigateway.LambdaRestApi(this, 'InventoryApi', {
+      handler: inventoryLambda,
+      proxy: true,
+    });
+
+    // Output API URL after deployment
+    new cdk.CfnOutput(this, 'ApiUrl', {
+      value: api.url,
+      description: 'Inventory API URL',
+    });
   }
 }
