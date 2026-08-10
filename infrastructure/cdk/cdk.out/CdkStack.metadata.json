@@ -1,0 +1,106 @@
+{
+  "/CdkStack": [
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "<anonymous> (/Users/samip/Desktop/cloud-retail-inventory-system/infrastructure/cdk/bin/cdk.ts:6:1)",
+        "<anonymous> (/Users/samip/Desktop/cloud-retail-inventory-system/infrastructure/cdk/bin/cdk.ts:20:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/CdkStack/InventoryTable": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "tableName": "*",
+        "partitionKey": {
+          "name": "*",
+          "type": "S"
+        },
+        "billingMode": "PAY_PER_REQUEST",
+        "removalPolicy": "destroy"
+      }
+    },
+    {
+      "type": "aws:cdk:hasPhysicalName",
+      "data": {
+        "Ref": "InventoryTableFD135387"
+      }
+    }
+  ],
+  "/CdkStack/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/CdkStack/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/CdkStack/InventoryTable/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "InventoryTableFD135387"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Table2 in aws-cdk-lib...",
+        "new CdkStack (/Users/samip/Desktop/cloud-retail-inventory-system/infrastructure/cdk/lib/cdk-stack.ts:9:28)",
+        "<anonymous> (/Users/samip/Desktop/cloud-retail-inventory-system/infrastructure/cdk/bin/cdk.ts:6:1)",
+        "<anonymous> (/Users/samip/Desktop/cloud-retail-inventory-system/infrastructure/cdk/bin/cdk.ts:20:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/CdkStack/InventoryTable/ScalingRole": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": "*"
+    }
+  ],
+  "/CdkStack/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/CdkStack/CDKMetadata/Condition": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadataAvailable"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ]
+}
