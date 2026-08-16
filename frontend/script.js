@@ -1,646 +1,390 @@
-const LOW_STOCK_LEVEL = 5;
-
-const STORAGE_KEYS = {
-  apiUrl: "greenleaf_api_url",
-  demoProducts: "greenleaf_demo_products",
-};
-
-const defaultDemoProducts = [
-  {
-    productId: "milk-001",
-    name: "Fresh Milk",
-    price: 3.5,
-    stock: 12,
-  },
-  {
-    productId: "bread-001",
-    name: "Wholemeal Bread",
-    price: 4.2,
-    stock: 4,
-  },
-  {
-    productId: "eggs-001",
-    name: "Free Range Eggs",
-    price: 7.5,
-    stock: 0,
-  },
-];
-
-let apiBaseUrl = "";
-let products = [];
-
-const elements = {
-  apiForm: document.getElementById("apiForm"),
-  apiUrlInput: document.getElementById("apiUrlInput"),
-  connectionBadge: document.getElementById("connectionBadge"),
-  demoModeButton: document.getElementById("demoModeButton"),
-  refreshButton: document.getElementById("refreshButton"),
-  statusMessage: document.getElementById("statusMessage"),
-  totalProducts: document.getElementById("totalProducts"),
-  totalStock: document.getElementById("totalStock"),
-  lowStockCount: document.getElementById("lowStockCount"),
-  soldOutCount: document.getElementById("soldOutCount"),
-  inventoryValue: document.getElementById("inventoryValue"),
-  addProductForm: document.getElementById("addProductForm"),
-  productIdInput: document.getElementById("productIdInput"),
-  productNameInput: document.getElementById("productNameInput"),
-  productPriceInput: document.getElementById("productPriceInput"),
-  productStockInput: document.getElementById("productStockInput"),
-  saleForm: document.getElementById("saleForm"),
-  saleProductSelect: document.getElementById("saleProductSelect"),
-  saleQuantityInput: document.getElementById("saleQuantityInput"),
-  editProductForm: document.getElementById("editProductForm"),
-  editProductSelect: document.getElementById("editProductSelect"),
-  editNameInput: document.getElementById("editNameInput"),
-  editPriceInput: document.getElementById("editPriceInput"),
-  editStockInput: document.getElementById("editStockInput"),
-  viewSelectedButton: document.getElementById("viewSelectedButton"),
-  productDetail: document.getElementById("productDetail"),
-  productTableBody: document.getElementById("productTableBody"),
-  emptyState: document.getElementById("emptyState"),
-};
-
-function startApp() {
-  apiBaseUrl = normalizeApiUrl(localStorage.getItem(STORAGE_KEYS.apiUrl) || "");
-  elements.apiUrlInput.value = apiBaseUrl;
-
-  elements.apiForm.addEventListener("submit", handleSaveApiUrl);
-  elements.demoModeButton.addEventListener("click", handleUseDemoMode);
-  elements.refreshButton.addEventListener("click", loadProducts);
-  elements.addProductForm.addEventListener("submit", handleAddProduct);
-  elements.saleForm.addEventListener("submit", handleRecordSale);
-  elements.editProductForm.addEventListener("submit", handleEditProduct);
-  elements.viewSelectedButton.addEventListener("click", handleViewSelectedProduct);
-  elements.productTableBody.addEventListener("click", handleTableAction);
-
-  loadProducts();
+:root {
+  --bg: #f4f8f5;
+  --surface: #ffffff;
+  --surface-soft: #eef6f0;
+  --border: #d8e4dc;
+  --text: #17251c;
+  --muted: #66756b;
+  --primary: #167a42;
+  --primary-dark: #0f5e31;
+  --warning: #b7791f;
+  --danger: #b42318;
+  --success: #087443;
+  --shadow: 0 14px 40px rgba(15, 94, 49, 0.1);
 }
 
-function normalizeApiUrl(url) {
-  return String(url || "")
-    .trim()
-    .replace(/\/+$/, "");
+* {
+  box-sizing: border-box;
 }
 
-function isApiMode() {
-  return apiBaseUrl.length > 0;
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
 }
 
-async function apiRequest(path, options = {}) {
-  const response = await fetch(`${apiBaseUrl}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-  });
-
-  const text = await response.text();
-  let data = null;
-
-  if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = {
-        message: text,
-      };
-    }
-  }
-
-  if (!response.ok) {
-    throw new Error(data?.message || `Request failed with ${response.status}`);
-  }
-
-  return data;
+button,
+input,
+select {
+  font: inherit;
 }
 
-async function loadProducts() {
-  setBusy(true);
-
-  try {
-    if (isApiMode()) {
-      const data = await apiRequest("/products");
-      products = Array.isArray(data) ? data.map(normalizeProduct) : [];
-      showMessage("Products loaded from the AWS API.", "success");
-    } else {
-      products = getDemoProducts();
-      showMessage("Demo mode is active. Paste the API URL to use the real backend.", "warning");
-    }
-
-    render();
-  } catch (error) {
-    showMessage(
-      `Cannot load products. ${error.message}. If this is from the browser, ask the backend member to enable CORS.`,
-      "error"
-    );
-  } finally {
-    setBusy(false);
-  }
+button {
+  border: 0;
+  border-radius: 8px;
+  background: var(--primary);
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 0.8rem 1rem;
 }
 
-async function handleSaveApiUrl(event) {
-  event.preventDefault();
-
-  apiBaseUrl = normalizeApiUrl(elements.apiUrlInput.value);
-  localStorage.setItem(STORAGE_KEYS.apiUrl, apiBaseUrl);
-
-  if (!apiBaseUrl) {
-    showMessage("API URL is empty, so demo mode is active.", "warning");
-  }
-
-  await loadProducts();
+button:hover {
+  background: var(--primary-dark);
 }
 
-async function handleUseDemoMode() {
-  apiBaseUrl = "";
-  localStorage.removeItem(STORAGE_KEYS.apiUrl);
-  elements.apiUrlInput.value = "";
-  await loadProducts();
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
-async function handleAddProduct(event) {
-  event.preventDefault();
-
-  const product = {
-    productId: elements.productIdInput.value.trim(),
-    name: elements.productNameInput.value.trim(),
-    price: Number(elements.productPriceInput.value),
-    stock: toWholeNumber(elements.productStockInput.value),
-  };
-
-  if (!product.productId || !product.name || Number.isNaN(product.price)) {
-    showMessage("Please enter product ID, name, price, and stock.", "error");
-    return;
-  }
-
-  if (product.price < 0 || product.stock < 0) {
-    showMessage("Price and stock cannot be negative.", "error");
-    return;
-  }
-
-  setBusy(true);
-
-  try {
-    if (isApiMode()) {
-      await apiRequest("/products", {
-        method: "POST",
-        body: JSON.stringify(product),
-      });
-    } else {
-      if (products.some((item) => item.productId === product.productId)) {
-        throw new Error("Product ID already exists in demo mode");
-      }
-
-      products.push(product);
-      saveDemoProducts();
-    }
-
-    elements.addProductForm.reset();
-    showMessage("Product added successfully.", "success");
-    await loadProducts();
-  } catch (error) {
-    showMessage(`Cannot add product. ${error.message}`, "error");
-  } finally {
-    setBusy(false);
-  }
+.secondary-button {
+  background: #e4efe8;
+  color: var(--primary-dark);
 }
 
-async function handleRecordSale(event) {
-  event.preventDefault();
-
-  const productId = elements.saleProductSelect.value;
-  const quantitySold = toWholeNumber(elements.saleQuantityInput.value);
-  await recordSale(productId, quantitySold);
+.secondary-button:hover {
+  background: #d3e5d9;
 }
 
-async function recordSale(productId, quantitySold) {
-  const product = findProduct(productId);
-
-  if (!product) {
-    showMessage("Please choose a product.", "error");
-    return;
-  }
-
-  if (quantitySold <= 0) {
-    showMessage("Quantity sold must be at least 1.", "error");
-    return;
-  }
-
-  if (product.stock === 0) {
-    showMessage(`${product.name} is sold out. Sale was not recorded.`, "error");
-    return;
-  }
-
-  if (quantitySold > product.stock) {
-    showMessage(
-      `Cannot sell ${quantitySold}. Only ${product.stock} item(s) available.`,
-      "error"
-    );
-    return;
-  }
-
-  const newStock = product.stock - quantitySold;
-  const updated = await updateProduct(product.productId, { stock: newStock });
-
-  if (updated) {
-    showMessage(`Sale recorded. New stock for ${product.name}: ${displayStock(newStock)}.`, "success");
-  }
+input,
+select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--text);
+  padding: 0.75rem;
 }
 
-async function handleEditProduct(event) {
-  event.preventDefault();
-
-  const productId = elements.editProductSelect.value;
-  const updates = {};
-
-  if (elements.editNameInput.value.trim()) {
-    updates.name = elements.editNameInput.value.trim();
-  }
-
-  if (elements.editPriceInput.value !== "") {
-    const price = Number(elements.editPriceInput.value);
-
-    if (Number.isNaN(price) || price < 0) {
-      showMessage("Price cannot be negative.", "error");
-      return;
-    }
-
-    updates.price = price;
-  }
-
-  if (elements.editStockInput.value !== "") {
-    const stock = toWholeNumber(elements.editStockInput.value);
-
-    if (stock < 0) {
-      showMessage("Stock cannot be negative.", "error");
-      return;
-    }
-
-    updates.stock = stock;
-  }
-
-  if (!productId || Object.keys(updates).length === 0) {
-    showMessage("Choose a product and enter at least one field to update.", "error");
-    return;
-  }
-
-  const updated = await updateProduct(productId, updates);
-
-  if (updated) {
-    elements.editProductForm.reset();
-    showMessage("Product updated successfully.", "success");
-  }
+input:focus,
+select:focus {
+  border-color: var(--primary);
+  outline: 3px solid rgba(22, 122, 66, 0.16);
 }
 
-async function updateProduct(productId, updates) {
-  setBusy(true);
-
-  try {
-    if (updates.stock !== undefined) {
-      updates.stock = Math.max(0, toWholeNumber(updates.stock));
-    }
-
-    if (isApiMode()) {
-      await apiRequest(`/products/${encodeURIComponent(productId)}`, {
-        method: "PUT",
-        body: JSON.stringify(updates),
-      });
-    } else {
-      products = products.map((product) =>
-        product.productId === productId
-          ? normalizeProduct({ ...product, ...updates })
-          : product
-      );
-      saveDemoProducts();
-    }
-
-    await loadProducts();
-    return true;
-  } catch (error) {
-    showMessage(`Cannot update product. ${error.message}`, "error");
-    return false;
-  } finally {
-    setBusy(false);
-  }
+.app-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 430px);
+  gap: 1.5rem;
+  align-items: start;
+  padding: 2rem;
+  background: linear-gradient(135deg, #123f27 0%, #1f7a46 100%);
+  color: #ffffff;
 }
 
-async function handleViewSelectedProduct() {
-  const productId = elements.editProductSelect.value;
-
-  if (!productId) {
-    showMessage("Choose a product first.", "error");
-    return;
-  }
-
-  setBusy(true);
-
-  try {
-    let product;
-
-    if (isApiMode()) {
-      product = normalizeProduct(
-        await apiRequest(`/products/${encodeURIComponent(productId)}`)
-      );
-    } else {
-      product = findProduct(productId);
-    }
-
-    renderProductDetail(product);
-    showMessage("Product details loaded.", "success");
-  } catch (error) {
-    showMessage(`Cannot view product. ${error.message}`, "error");
-  } finally {
-    setBusy(false);
-  }
+.eyebrow {
+  margin: 0 0 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-async function handleTableAction(event) {
-  const button = event.target.closest("button[data-action]");
+.app-header h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.6rem);
+  line-height: 1.05;
+}
 
-  if (!button) {
-    return;
+.header-text {
+  max-width: 620px;
+  margin: 1rem 0 0;
+  color: #d9f0e2;
+  font-size: 1.05rem;
+}
+
+.api-panel {
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 1rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--primary-dark);
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 0.35rem 0.7rem;
+}
+
+.badge.live {
+  color: #ffffff;
+  background: var(--success);
+}
+
+.api-form {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 1rem;
+}
+
+.api-form label {
+  color: #edf9f1;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.api-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+}
+
+.api-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.page-shell {
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 1.5rem 0 2rem;
+}
+
+.status-message {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  margin-bottom: 1rem;
+  padding: 0.95rem 1rem;
+}
+
+.status-message.success {
+  border-color: rgba(8, 116, 67, 0.35);
+  color: var(--success);
+}
+
+.status-message.error {
+  border-color: rgba(180, 35, 24, 0.35);
+  color: var(--danger);
+}
+
+.status-message.warning {
+  border-color: rgba(183, 121, 31, 0.35);
+  color: var(--warning);
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.summary-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 1rem;
+}
+
+.summary-card span {
+  color: var(--muted);
+  display: block;
+  font-size: 0.88rem;
+  margin-bottom: 0.35rem;
+}
+
+.summary-card strong {
+  display: block;
+  font-size: 1.7rem;
+}
+
+.workspace-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 1rem;
+}
+
+.panel-heading {
+  margin-bottom: 1rem;
+}
+
+.panel-heading h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.2rem;
+}
+
+.panel-heading p {
+  color: var(--muted);
+  margin: 0;
+}
+
+.form-grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.form-grid label {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.product-detail {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  margin-top: 1rem;
+  padding: 0.85rem;
+}
+
+.table-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.low-stock-note {
+  align-self: start;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--primary-dark);
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.45rem 0.75rem;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.85rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
+th {
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+}
+
+.stock-pill,
+.status-pill {
+  display: inline-flex;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 0.35rem 0.65rem;
+}
+
+.status-ok {
+  background: #e4f4ea;
+  color: var(--success);
+}
+
+.status-low {
+  background: #fff4dc;
+  color: var(--warning);
+}
+
+.status-sold-out {
+  background: #fee4e2;
+  color: var(--danger);
+}
+
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.action-row button {
+  padding: 0.55rem 0.7rem;
+}
+
+.action-row input {
+  max-width: 90px;
+  padding: 0.55rem;
+}
+
+.danger-button {
+  background: var(--danger);
+}
+
+.danger-button:hover {
+  background: #8f1c13;
+}
+
+.empty-state {
+  color: var(--muted);
+  margin-bottom: 0;
+  text-align: center;
+}
+
+.is-busy button {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+@media (max-width: 980px) {
+  .app-header,
+  .workspace-grid {
+    grid-template-columns: 1fr;
   }
 
-  const productId = button.dataset.productId;
-  const action = button.dataset.action;
-  const product = findProduct(productId);
-
-  if (!product) {
-    showMessage("Product not found.", "error");
-    return;
-  }
-
-  if (action === "view") {
-    elements.editProductSelect.value = productId;
-    await handleViewSelectedProduct();
-    return;
-  }
-
-  if (action === "sell-one") {
-    await recordSale(productId, 1);
-    return;
-  }
-
-  if (action === "restock") {
-    const input = button.parentElement.querySelector(".restock-input");
-    const quantity = toWholeNumber(input.value);
-
-    if (quantity <= 0) {
-      showMessage("Restock quantity must be at least 1.", "error");
-      return;
-    }
-
-    const updated = await updateProduct(productId, { stock: product.stock + quantity });
-
-    if (updated) {
-      showMessage(`Restocked ${product.name}.`, "success");
-    }
-
-    return;
-  }
-
-  if (action === "delete") {
-    await deleteProduct(productId);
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-async function deleteProduct(productId) {
-  const product = findProduct(productId);
-
-  if (!product) {
-    showMessage("Product not found.", "error");
-    return;
+@media (max-width: 620px) {
+  .app-header {
+    padding: 1.25rem;
   }
 
-  const confirmed = window.confirm(`Delete ${product.name}?`);
-
-  if (!confirmed) {
-    return;
+  .api-row,
+  .summary-grid {
+    grid-template-columns: 1fr;
   }
 
-  setBusy(true);
-
-  try {
-    if (isApiMode()) {
-      await apiRequest(`/products/${encodeURIComponent(productId)}`, {
-        method: "DELETE",
-      });
-    } else {
-      products = products.filter((item) => item.productId !== productId);
-      saveDemoProducts();
-    }
-
-    showMessage("Product deleted successfully.", "success");
-    await loadProducts();
-  } catch (error) {
-    showMessage(`Cannot delete product. ${error.message}`, "error");
-  } finally {
-    setBusy(false);
-  }
-}
-
-function render() {
-  renderMode();
-  renderSummary();
-  renderProductTable();
-  renderSelects();
-}
-
-function renderMode() {
-  if (isApiMode()) {
-    elements.connectionBadge.textContent = "AWS API mode";
-    elements.connectionBadge.classList.add("live");
-  } else {
-    elements.connectionBadge.textContent = "Demo mode";
-    elements.connectionBadge.classList.remove("live");
-  }
-}
-
-function renderSummary() {
-  const totalProducts = products.length;
-  const totalStock = products.reduce((sum, product) => sum + product.stock, 0);
-  const lowStockCount = products.filter(
-    (product) => product.stock > 0 && product.stock <= LOW_STOCK_LEVEL
-  ).length;
-  const soldOutCount = products.filter((product) => product.stock === 0).length;
-  const inventoryValue = products.reduce(
-    (sum, product) => sum + product.price * product.stock,
-    0
-  );
-
-  elements.totalProducts.textContent = totalProducts;
-  elements.totalStock.textContent = totalStock;
-  elements.lowStockCount.textContent = lowStockCount;
-  elements.soldOutCount.textContent = soldOutCount;
-  elements.inventoryValue.textContent = formatMoney(inventoryValue);
-}
-
-function renderProductTable() {
-  elements.productTableBody.innerHTML = "";
-  elements.emptyState.hidden = products.length > 0;
-
-  products.forEach((product) => {
-    const row = document.createElement("tr");
-    const status = getStockStatus(product.stock);
-
-    row.innerHTML = `
-      <td>${escapeHtml(product.productId)}</td>
-      <td>${escapeHtml(product.name)}</td>
-      <td>${formatMoney(product.price)}</td>
-      <td><span class="stock-pill ${status.className}">${displayStock(product.stock)}</span></td>
-      <td><span class="status-pill ${status.className}">${status.label}</span></td>
-      <td>
-        <div class="action-row">
-          <button type="button" data-action="view" data-product-id="${escapeHtml(product.productId)}">View</button>
-          <button type="button" data-action="sell-one" data-product-id="${escapeHtml(product.productId)}" ${product.stock === 0 ? "disabled" : ""}>Sell 1</button>
-          <input class="restock-input" type="number" min="1" step="1" value="5" aria-label="Restock quantity for ${escapeHtml(product.name)}" />
-          <button type="button" data-action="restock" data-product-id="${escapeHtml(product.productId)}">Restock</button>
-          <button type="button" class="danger-button" data-action="delete" data-product-id="${escapeHtml(product.productId)}">Delete</button>
-        </div>
-      </td>
-    `;
-
-    elements.productTableBody.appendChild(row);
-  });
-}
-
-function renderSelects() {
-  const saleOptions = products
-    .map((product) => {
-      const disabled = product.stock === 0 ? "disabled" : "";
-      return `<option value="${escapeHtml(product.productId)}" ${disabled}>${escapeHtml(product.name)} - ${displayStock(product.stock)}</option>`;
-    })
-    .join("");
-
-  const editOptions = products
-    .map(
-      (product) =>
-        `<option value="${escapeHtml(product.productId)}">${escapeHtml(product.name)}</option>`
-    )
-    .join("");
-
-  elements.saleProductSelect.innerHTML =
-    products.length > 0
-      ? saleOptions
-      : '<option value="">No products available</option>';
-
-  elements.editProductSelect.innerHTML =
-    products.length > 0
-      ? editOptions
-      : '<option value="">No products available</option>';
-}
-
-function renderProductDetail(product) {
-  if (!product) {
-    elements.productDetail.hidden = true;
-    elements.productDetail.innerHTML = "";
-    return;
+  .page-shell {
+    width: min(100% - 1rem, 1180px);
   }
 
-  const status = getStockStatus(product.stock);
-
-  elements.productDetail.hidden = false;
-  elements.productDetail.innerHTML = `
-    <strong>${escapeHtml(product.name)}</strong>
-    <p>ID: ${escapeHtml(product.productId)}</p>
-    <p>Price: ${formatMoney(product.price)}</p>
-    <p>Stock: ${displayStock(product.stock)}</p>
-    <p>Status: ${status.label}</p>
-  `;
-}
-
-function getDemoProducts() {
-  const savedProducts = localStorage.getItem(STORAGE_KEYS.demoProducts);
-
-  if (!savedProducts) {
-    localStorage.setItem(
-      STORAGE_KEYS.demoProducts,
-      JSON.stringify(defaultDemoProducts)
-    );
-    return defaultDemoProducts.map(normalizeProduct);
-  }
-
-  try {
-    return JSON.parse(savedProducts).map(normalizeProduct);
-  } catch {
-    localStorage.setItem(
-      STORAGE_KEYS.demoProducts,
-      JSON.stringify(defaultDemoProducts)
-    );
-    return defaultDemoProducts.map(normalizeProduct);
+  th,
+  td {
+    padding: 0.7rem;
   }
 }
-
-function saveDemoProducts() {
-  localStorage.setItem(STORAGE_KEYS.demoProducts, JSON.stringify(products));
-}
-
-function normalizeProduct(product) {
-  return {
-    productId: String(product.productId || ""),
-    name: String(product.name || ""),
-    price: Math.max(0, Number(product.price) || 0),
-    stock: Math.max(0, toWholeNumber(product.stock)),
-  };
-}
-
-function findProduct(productId) {
-  return products.find((product) => product.productId === productId);
-}
-
-function getStockStatus(stock) {
-  if (stock === 0) {
-    return {
-      label: "Sold out",
-      className: "status-sold-out",
-    };
-  }
-
-  if (stock <= LOW_STOCK_LEVEL) {
-    return {
-      label: "Low stock",
-      className: "status-low",
-    };
-  }
-
-  return {
-    label: "In stock",
-    className: "status-ok",
-  };
-}
-
-function displayStock(stock) {
-  return stock === 0 ? "Sold out" : String(stock);
-}
-
-function toWholeNumber(value) {
-  return Math.floor(Number(value) || 0);
-}
-
-function formatMoney(value) {
-  return new Intl.NumberFormat("en-AU", {
-    style: "currency",
-    currency: "AUD",
-  }).format(Number(value) || 0);
-}
-
-function showMessage(message, type = "info") {
-  elements.statusMessage.textContent = message;
-  elements.statusMessage.className = `status-message ${type}`;
-}
-
-function setBusy(isBusy) {
-  document.body.classList.toggle("is-busy", isBusy);
-}
-
-function escapeHtml(value) {
-  return String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
-startApp();
