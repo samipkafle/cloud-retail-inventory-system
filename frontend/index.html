@@ -1,1 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GreenLeaf Inventory Frontend</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <p class="small-title">GreenLeaf Grocers</p>
+    <h1>Inventory System</h1>
+
+    <button class="nav-button active" onclick="showPage('dashboard', this)">Dashboard</button>
+    <button class="nav-button" onclick="showPage('products', this)">Products</button>
+    <button class="nav-button" onclick="showPage('sales', this)">Sales</button>
+    <button class="nav-button" onclick="showPage('alerts', this)">Alerts</button>
+  </aside>
+
+  <main class="main-area">
+    <section id="dashboard" class="page active-page">
+      <h2>Dashboard</h2>
+
+      <div class="cards">
+        <div class="card">
+          <p>Total Products</p>
+          <h3 id="totalProducts">0</h3>
+        </div>
+        <div class="card">
+          <p>Total Sales</p>
+          <h3 id="totalSales">$0.00</h3>
+        </div>
+        <div class="card warning">
+          <p>Low Stock Items</p>
+          <h3 id="lowStockCount">0</h3>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Stock Overview</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Category</th>
+              <th>Stock</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="dashboardTable"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="products" class="page">
+      <h2>Products</h2>
+
+      <div class="panel">
+        <h3>Add New Product</h3>
+
+        <form id="productForm">
+          <label>
+            Product Name
+            <input id="productName" type="text" placeholder="Example: Milk 2L" required>
+          </label>
+
+          <label>
+            Category
+            <input id="productCategory" type="text" placeholder="Example: Dairy" required>
+          </label>
+
+          <label>
+            Price
+            <input id="productPrice" type="number" step="0.01" min="0" placeholder="Example: 4.50" required>
+          </label>
+
+          <label>
+            Stock Quantity
+            <input id="productStock" type="number" min="0" placeholder="Example: 20" required>
+          </label>
+
+          <label>
+            Reorder Level
+            <input id="productReorder" type="number" min="0" placeholder="Example: 5" required>
+          </label>
+
+          <button type="submit" class="primary-button">Add Product</button>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h3>Product List</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Category</th>
+              <th>Price</th>
+              <th>Stock</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="productTable"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="sales" class="page">
+      <h2>Sales</h2>
+
+      <div class="panel">
+        <h3>Record Sale</h3>
+
+        <form id="saleForm">
+          <label>
+            Select Product
+            <select id="saleProduct"></select>
+          </label>
+
+          <label>
+            Quantity Sold
+            <input id="saleQuantity" type="number" value="1" min="1" required>
+          </label>
+
+          <button type="submit" class="primary-button">Submit Sale</button>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h3>Sales History</h3>
+        <div id="salesHistory" class="history-list"></div>
+      </div>
+    </section>
+
+    <section id="alerts" class="page">
+      <h2>Low Stock Alerts</h2>
+
+      <div class="panel">
+        <h3>Products That Need Restocking</h3>
+        <div id="alertList" class="history-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
 
