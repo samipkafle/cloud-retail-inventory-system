@@ -1,148 +1,235 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GreenLeaf Inventory Frontend</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <aside class="sidebar">
-    <p class="small-title">GreenLeaf Grocers</p>
-    <h1>Inventory System</h1>
-
-    <button class="nav-button active" onclick="showPage('dashboard', this)">Dashboard</button>
-    <button class="nav-button" onclick="showPage('products', this)">Products</button>
-    <button class="nav-button" onclick="showPage('sales', this)">Sales</button>
-    <button class="nav-button" onclick="showPage('alerts', this)">Alerts</button>
-  </aside>
-
-  <main class="main-area">
-    <section id="dashboard" class="page active-page">
-      <h2>Dashboard</h2>
-
-      <div class="cards">
-        <div class="card">
-          <p>Total Products</p>
-          <h3 id="totalProducts">0</h3>
-        </div>
-        <div class="card">
-          <p>Total Sales</p>
-          <h3 id="totalSales">$0.00</h3>
-        </div>
-        <div class="card warning">
-          <p>Low Stock Items</p>
-          <h3 id="lowStockCount">0</h3>
-        </div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GreenLeaf Inventory Frontend</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">Cloud retail inventory system</p>
+        <h1>GreenLeaf Inventory Dashboard</h1>
+        <p class="header-text">
+          Frontend prototype connected to the AWS products API.
+        </p>
       </div>
 
-      <div class="panel">
-        <h3>Stock Overview</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>Category</th>
-              <th>Stock</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="dashboardTable"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section id="products" class="page">
-      <h2>Products</h2>
-
-      <div class="panel">
-        <h3>Add New Product</h3>
-
-        <form id="productForm">
-          <label>
-            Product Name
-            <input id="productName" type="text" placeholder="Example: Milk 2L" required>
-          </label>
-
-          <label>
-            Category
-            <input id="productCategory" type="text" placeholder="Example: Dairy" required>
-          </label>
-
-          <label>
-            Price
-            <input id="productPrice" type="number" step="0.01" min="0" placeholder="Example: 4.50" required>
-          </label>
-
-          <label>
-            Stock Quantity
-            <input id="productStock" type="number" min="0" placeholder="Example: 20" required>
-          </label>
-
-          <label>
-            Reorder Level
-            <input id="productReorder" type="number" min="0" placeholder="Example: 5" required>
-          </label>
-
-          <button type="submit" class="primary-button">Add Product</button>
+      <div class="api-panel">
+        <span id="connectionBadge" class="badge">Demo mode</span>
+        <form id="apiForm" class="api-form">
+          <label for="apiUrlInput">API Gateway URL</label>
+          <div class="api-row">
+            <input
+              id="apiUrlInput"
+              type="url"
+              placeholder="https://abc123.execute-api.ap-southeast-2.amazonaws.com/prod"
+            />
+            <button type="submit">Save API</button>
+          </div>
         </form>
+        <div class="api-actions">
+          <button id="refreshButton" type="button">Refresh</button>
+          <button id="demoModeButton" type="button" class="secondary-button">
+            Use demo mode
+          </button>
+        </div>
       </div>
+    </header>
 
-      <div class="panel">
-        <h3>Product List</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>Category</th>
-              <th>Price</th>
-              <th>Stock</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="productTable"></tbody>
-        </table>
-      </div>
-    </section>
+    <main class="page-shell">
+      <section id="statusMessage" class="status-message" aria-live="polite">
+        Ready. Add products in demo mode or paste the real API URL.
+      </section>
 
-    <section id="sales" class="page">
-      <h2>Sales</h2>
+      <section class="summary-grid" aria-label="Inventory summary">
+        <article class="summary-card">
+          <span>Total products</span>
+          <strong id="totalProducts">0</strong>
+        </article>
+        <article class="summary-card">
+          <span>Total stock</span>
+          <strong id="totalStock">0</strong>
+        </article>
+        <article class="summary-card">
+          <span>Low stock</span>
+          <strong id="lowStockCount">0</strong>
+        </article>
+        <article class="summary-card">
+          <span>Sold out</span>
+          <strong id="soldOutCount">0</strong>
+        </article>
+        <article class="summary-card">
+          <span>Inventory value</span>
+          <strong id="inventoryValue">$0.00</strong>
+        </article>
+      </section>
 
-      <div class="panel">
-        <h3>Record Sale</h3>
+      <section class="workspace-grid">
+        <div class="panel">
+          <div class="panel-heading">
+            <h2>Add Product</h2>
+            <p>Create a product using Samip's POST /products API.</p>
+          </div>
 
-        <form id="saleForm">
-          <label>
-            Select Product
-            <select id="saleProduct"></select>
-          </label>
+          <form id="addProductForm" class="form-grid">
+            <label>
+              Product ID
+              <input
+                id="productIdInput"
+                type="text"
+                placeholder="milk-001"
+                required
+              />
+            </label>
 
-          <label>
-            Quantity Sold
-            <input id="saleQuantity" type="number" value="1" min="1" required>
-          </label>
+            <label>
+              Product name
+              <input
+                id="productNameInput"
+                type="text"
+                placeholder="Fresh Milk"
+                required
+              />
+            </label>
 
-          <button type="submit" class="primary-button">Submit Sale</button>
-        </form>
-      </div>
+            <label>
+              Price
+              <input
+                id="productPriceInput"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="3.50"
+                required
+              />
+            </label>
 
-      <div class="panel">
-        <h3>Sales History</h3>
-        <div id="salesHistory" class="history-list"></div>
-      </div>
-    </section>
+            <label>
+              Stock quantity
+              <input
+                id="productStockInput"
+                type="number"
+                min="0"
+                step="1"
+                placeholder="25"
+                required
+              />
+            </label>
 
-    <section id="alerts" class="page">
-      <h2>Low Stock Alerts</h2>
+            <button type="submit">Add Product</button>
+          </form>
+        </div>
 
-      <div class="panel">
-        <h3>Products That Need Restocking</h3>
-        <div id="alertList" class="history-list"></div>
-      </div>
-    </section>
-  </main>
+        <div class="panel">
+          <div class="panel-heading">
+            <h2>Record Sale</h2>
+            <p>Sale is saved by reducing the product stock with PUT.</p>
+          </div>
 
-  <script src="script.js"></script>
-</body>
+          <form id="saleForm" class="form-grid">
+            <label>
+              Product
+              <select id="saleProductSelect" required></select>
+            </label>
+
+            <label>
+              Quantity sold
+              <input
+                id="saleQuantityInput"
+                type="number"
+                min="1"
+                step="1"
+                value="1"
+                required
+              />
+            </label>
+
+            <button type="submit">Record Sale</button>
+          </form>
+        </div>
+
+        <div class="panel">
+          <div class="panel-heading">
+            <h2>Update Product</h2>
+            <p>Leave a field empty if you do not want to change it.</p>
+          </div>
+
+          <form id="editProductForm" class="form-grid">
+            <label>
+              Product
+              <select id="editProductSelect" required></select>
+            </label>
+
+            <label>
+              New name
+              <input id="editNameInput" type="text" placeholder="Optional" />
+            </label>
+
+            <label>
+              New price
+              <input
+                id="editPriceInput"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Optional"
+              />
+            </label>
+
+            <label>
+              New stock
+              <input
+                id="editStockInput"
+                type="number"
+                min="0"
+                step="1"
+                placeholder="Optional"
+              />
+            </label>
+
+            <button type="submit">Update Product</button>
+            <button id="viewSelectedButton" type="button" class="secondary-button">
+              View Product
+            </button>
+          </form>
+
+          <div id="productDetail" class="product-detail" hidden></div>
+        </div>
+      </section>
+
+      <section class="panel table-panel">
+        <div class="panel-heading table-heading">
+          <div>
+            <h2>Products</h2>
+            <p>Products returned from GET /products.</p>
+          </div>
+          <span class="low-stock-note">Low stock level: 5 or less</span>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Product ID</th>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Stock</th>
+                <th>Status</th>
+                <th>Quick actions</th>
+              </tr>
+            </thead>
+            <tbody id="productTableBody"></tbody>
+          </table>
+        </div>
+
+        <p id="emptyState" class="empty-state" hidden>
+          No products yet. Add a product to start testing the frontend.
+        </p>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
 </html>
-
