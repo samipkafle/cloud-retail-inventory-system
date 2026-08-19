@@ -28,7 +28,7 @@ import {
 } from "./ui.js";
 import { renderAll } from "./render.js";
 
-// Loads products from the AWS API or sample-data storage.
+// Loads products from the AWS API or sample-data storage. GET Function
 export async function loadProducts({ showLoader = true } = {}) {
   if (showLoader) showLoading("Loading inventory…");
   $("#apiErrorPanel").hidden = true;
@@ -82,7 +82,7 @@ export async function loadProducts({ showLoader = true } = {}) {
   }
 }
 
-// Validates the product form and creates or updates a product.
+// Validates the product form and creates or updates a product. POST or PUT Function
 export async function handleProductSubmit(event) {
   event.preventDefault();
   setFormError("#productFormError");
@@ -152,7 +152,7 @@ export async function handleProductSubmit(event) {
   }
 }
 
-// Validates a sale, reduces stock and records the transaction locally.
+// Validates a sale, reduces stock and records the transaction locally. PUT Function
 export async function handleSaleSubmit(event) {
   event.preventDefault();
   setFormError("#saleFormError");
@@ -211,7 +211,7 @@ export async function handleSaleSubmit(event) {
   }
 }
 
-// Deletes the selected product after confirmation.
+// Deletes the selected product after confirmation. DELETE Function
 export async function handleConfirmDelete() {
   const productId = state.deletingProductId;
   const product = state.products.find((item) => item.productId === productId);
@@ -238,7 +238,7 @@ export async function handleConfirmDelete() {
   }
 }
 
-// Calculates and applies a suggested stock increase.
+// Calculates and applies a suggested stock increase. PUT Function
 export async function restockProduct(productId) {
   const product = state.products.find((item) => item.productId === productId);
   if (!product) return;
