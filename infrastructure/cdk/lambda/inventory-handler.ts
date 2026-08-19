@@ -48,6 +48,9 @@ export const handler = async (event: any) => {
             stock: {
               N: String(body.stock || 0),
             },
+            reorderThreshold: {
+              N: String(body.reorderThreshold || 0),
+            },
           },
         })
       );
@@ -77,6 +80,9 @@ export const handler = async (event: any) => {
         name: item.name?.S,
         price: item.price?.N ? Number(item.price.N) : 0,
         stock: item.stock?.N ? Number(item.stock.N) : 0,
+        reorderThreshold: item.reorderThreshold?.N
+          ? Number(item.reorderThreshold.N)
+          : 0,
       }));
 
       return {
@@ -122,6 +128,9 @@ export const handler = async (event: any) => {
         stock: result.Item.stock?.N
           ? Number(result.Item.stock.N)
           : 0,
+        reorderThreshold: result.Item.reorderThreshold?.N
+          ? Number(result.Item.reorderThreshold.N)
+          : 0,
       };
 
       return {
@@ -140,7 +149,8 @@ export const handler = async (event: any) => {
       if (
         body.name === undefined &&
         body.price === undefined &&
-        body.stock === undefined
+        body.stock === undefined &&
+        body.reorderThreshold === undefined
       ) {
         return {
           statusCode: 400,
@@ -148,7 +158,7 @@ export const handler = async (event: any) => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            message: 'Provide name, price or stock to update',
+            message: 'Provide name, price, stock or reorderThreshold to update',
           }),
         };
       }
@@ -181,6 +191,14 @@ export const handler = async (event: any) => {
         };
       }
 
+      if (body.reorderThreshold !== undefined) {
+        updateExpressions.push('#reorderThreshold = :reorderThreshold');
+        expressionAttributeNames['#reorderThreshold'] = 'reorderThreshold';
+        expressionAttributeValues[':reorderThreshold'] = {
+          N: String(body.reorderThreshold),
+        };
+      }
+
       const result = await client.send(
         new UpdateItemCommand({
           TableName: tableName,
@@ -204,6 +222,9 @@ export const handler = async (event: any) => {
           : 0,
         stock: result.Attributes?.stock?.N
           ? Number(result.Attributes.stock.N)
+          : 0,
+        reorderThreshold: result.Attributes?.reorderThreshold?.N
+          ? Number(result.Attributes.reorderThreshold.N)
           : 0,
       };
 
