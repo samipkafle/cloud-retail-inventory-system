@@ -2,7 +2,7 @@
 
 This is the frontend for the Cloud-Based Retail Inventory and Sales Monitoring System.
 
-It supports Samip's current backend API:
+It supports current backend API:
 
 - `GET /products`
 - `POST /products`
@@ -18,16 +18,16 @@ frontend/
   style.css
   script.js
   README.md
-js/
-  app.js
-  config.js
-  actions.js
-  storage.js
-  utils.js
-  api.js
-  inventory.js
-  ui.js
-  render.js
+    js/
+      app.js
+      config.js
+      actions.js
+      storage.js
+      utils.js
+      api.js
+      inventory.js
+      ui.js
+      render.js
   
 ```
 

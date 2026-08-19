@@ -18,17 +18,17 @@ export const STORAGE_KEYS = {
 // Prototype user profiles used by the login screen.
 export const ROLE_PROFILES = {
   manager: {
-    name: "Maya Chen",
+    name: "Virasanh",
     title: "Store Manager",
     email: "manager@greenleaf.demo",
   },
   staff: {
-    name: "Jordan Lee",
+    name: "Lee",
     title: "Store Staff",
     email: "staff@greenleaf.demo",
   },
   maintainer: {
-    name: "Alex Morgan",
+    name: "Alexa",
     title: "System Maintainer",
     email: "maintainer@greenleaf.demo",
   },
