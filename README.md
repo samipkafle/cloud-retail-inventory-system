@@ -20,26 +20,26 @@ The project demonstrates cloud engineering practices using AWS serverless servic
 
 ### Implemented
 
-* Product creation
-* Retrieve all products
-* Retrieve individual products
-* Update product information
-* Delete products
-* Inventory data storage using DynamoDB
+* Product creation, retrieval, update and deletion (full CRUD)
+* Record daily sales, with inventory automatically updated on each valid sale
+* Reject sales that would exceed available stock
+* Automated low-stock alert history, stored and retrievable via the API
+* Automated low-stock email notifications via Amazon SNS
 * REST API using API Gateway
 * Serverless backend using AWS Lambda
+* Inventory, sales and alert data storage using DynamoDB
 * Infrastructure deployment using AWS CDK
 * CloudWatch logging
 
 ### Planned
 
-* Daily sales recording
-* Sales monitoring and reporting
-* Automated low-stock detection
-* SNS stock notifications
-* CloudWatch monitoring dashboard
-* Application performance monitoring
-* User interface
+* User authentication and role-based access
+* Inventory/stock overview endpoint (current stock and low-stock list)
+* Sales reporting and CSV export to S3
+* Smart restocking forecast based on 14-day sales velocity
+* AI-powered demand recommendation engine (Python/scikit-learn)
+* Dashboard charts for sales, category share and product trends
+* React frontend user interface
 
 ## System Architecture
 
@@ -57,18 +57,16 @@ DynamoDB
 CloudWatch Logs
 ```
 
-Planned monitoring and notification components:
+Low-stock alerts branch out from the sales flow above:
 
 ```text
-DynamoDB / Lambda
+Lambda (on low-stock sale)
       ↓
-CloudWatch
-      ↓
-Low Stock Detection
+DynamoDB (alert history)
       ↓
 SNS
       ↓
-Notification
+Email Notification
 ```
 
 ## AWS Services Used
@@ -77,17 +75,17 @@ Notification
 | ----------- | --------------------------------------------- |
 | AWS Lambda  | Backend processing and business logic         |
 | API Gateway | REST API management                           |
-| DynamoDB    | Store product, inventory, and sales data      |
+| DynamoDB    | Store product, inventory, sales and alert data |
 | Amazon S3   | Store application files and deployment assets |
 | IAM         | Access control and security                   |
 | CloudWatch  | Monitoring, logging, and alarms               |
-| SNS         | Low-stock notifications                       |
+| SNS         | Low-stock email notifications                 |
 | AWS CDK     | Infrastructure-as-Code deployment             |
 
 ## Technologies
 
-* TypeScript
-* Node.js
+* TypeScript / Node.js (current backend implementation)
+* Python (planned, for the demand recommendation engine)
 * AWS Cloud Services
 * AWS CDK
 * DynamoDB
@@ -96,17 +94,19 @@ Notification
 * Visual Studio Code
 * Postman
 
-## Product API
+## API Reference
 
 The current API supports the following operations:
 
-| Method | Endpoint                | Purpose                   |
-| ------ | ----------------------- | ------------------------- |
-| POST   | `/products`             | Create a product          |
-| GET    | `/products`             | Retrieve all products     |
-| GET    | `/products/{productId}` | Retrieve a single product |
-| PUT    | `/products/{productId}` | Update a product          |
-| DELETE | `/products/{productId}` | Delete a product          |
+| Method | Endpoint                | Purpose                              |
+| ------ | ------------------------ | ------------------------------------ |
+| POST   | `/products`              | Create a product                     |
+| GET    | `/products`              | Retrieve all products                |
+| GET    | `/products/{productId}`  | Retrieve a single product            |
+| PUT    | `/products/{productId}`  | Update a product                     |
+| DELETE | `/products/{productId}`  | Delete a product                     |
+| POST   | `/sales`                 | Record a sale (updates stock, rejects oversell, raises alert if low) |
+| GET    | `/alerts`                | Retrieve low-stock alert history     |
 
 ### Example Product
 
@@ -115,7 +115,17 @@ The current API supports the following operations:
   "productId": "P001",
   "name": "Chicken Ramen",
   "price": 15.5,
-  "stock": 20
+  "stock": 20,
+  "reorderThreshold": 5
+}
+```
+
+### Example Sale
+
+```json
+{
+  "productId": "P001",
+  "quantitySold": 3
 }
 ```
 
@@ -131,9 +141,10 @@ AWS infrastructure is deployed using AWS CDK.
 
 Current infrastructure includes:
 
-* DynamoDB table
-* Lambda function
+* DynamoDB tables (products, sales, alerts)
+* Lambda functions (products, sales, alerts)
 * API Gateway REST API
+* SNS topic with email subscription for low-stock notifications
 * IAM roles and permissions
 * CloudWatch logging
 
@@ -172,10 +183,10 @@ Postman is currently being used to test the REST API endpoints.
 
 ## Project Documentation
 
-Documentation will include:
+Documentation includes:
 
+* [System requirements and implementation status](docs/requirements.md)
 * System architecture
-* Requirements specification
 * API documentation
 * Deployment guide
 * Test reports
@@ -192,26 +203,28 @@ Documentation will include:
 * [x] AWS account configuration
 * [x] AWS CLI setup
 * [x] AWS CDK setup
-* [x] DynamoDB database
+* [x] DynamoDB database (products, sales, alerts)
 * [x] AWS Lambda backend
 * [x] API Gateway
 * [x] Product CRUD API
+* [x] Sales recording API with automatic inventory update
+* [x] Low-stock alert history API
+* [x] SNS email notifications for low-stock alerts
 * [x] API testing using Postman
 * [x] CloudWatch Lambda logging
 * [x] CDK deployment
 
 ### In Progress
 
-* [ ] Product database improvements
-* [ ] Low-stock detection
-* [ ] SNS notifications
+* [ ] Inventory/stock overview endpoint
 * [ ] CloudWatch dashboard
-* [ ] Sales monitoring
+* [ ] Sales reporting and CSV export
 
 ### Planned
 
-* [ ] Sales transaction API
-* [ ] Reporting
+* [ ] Smart restocking forecast (14-day sales velocity)
+* [ ] AI demand recommendation engine
+* [ ] Reporting and insights dashboard
 * [ ] Frontend/user interface
 * [ ] Automated testing
 * [ ] User Acceptance Testing
