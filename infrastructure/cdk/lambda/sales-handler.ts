@@ -140,7 +140,8 @@ export const handler = async (event: any) => {
         })
       );
 
-    
+      // Notification is best-effort: the sale and alert history are already
+      // committed, so a failure here shouldn't fail the whole request.
       try {
         await snsClient.send(
           new PublishCommand({
