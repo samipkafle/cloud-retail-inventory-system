@@ -15,15 +15,20 @@ const salesTableName = process.env.SALES_TABLE_NAME!;
 const alertsTableName = process.env.ALERTS_TABLE_NAME!;
 const lowStockTopicArn = process.env.LOW_STOCK_TOPIC_ARN!;
 
+const corsHeaders = {
+  'Content-Type': 'application/json',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+};
+
 // POST /sales
 export const handler = async (event: any) => {
   try {
     if (event.httpMethod !== 'POST') {
       return {
         statusCode: 405,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: corsHeaders,
         body: JSON.stringify({
           message: 'Method not allowed',
         }),
@@ -36,9 +41,7 @@ export const handler = async (event: any) => {
     if (!productId || !(Number(quantitySold) > 0)) {
       return {
         statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: corsHeaders,
         body: JSON.stringify({
           message: 'productId and a positive quantitySold are required',
         }),
@@ -57,9 +60,7 @@ export const handler = async (event: any) => {
     if (!productResult.Item) {
       return {
         statusCode: 404,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: corsHeaders,
         body: JSON.stringify({
           message: 'Product not found',
         }),
@@ -97,9 +98,7 @@ export const handler = async (event: any) => {
       if (err.name === 'ConditionalCheckFailedException') {
         return {
           statusCode: 400,
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: corsHeaders,
           body: JSON.stringify({
             message: 'Sale rejected: quantitySold exceeds available stock',
           }),
@@ -141,8 +140,7 @@ export const handler = async (event: any) => {
         })
       );
 
-      // Notification is best-effort: the sale and alert history are already
-      // committed, so a failure here shouldn't fail the whole request.
+    
       try {
         await snsClient.send(
           new PublishCommand({
@@ -158,9 +156,7 @@ export const handler = async (event: any) => {
 
     return {
       statusCode: 201,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: corsHeaders,
       body: JSON.stringify({
         message: 'Sale recorded successfully',
         sale: {
@@ -178,9 +174,7 @@ export const handler = async (event: any) => {
 
     return {
       statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: corsHeaders,
       body: JSON.stringify({
         message: 'Internal server error',
       }),

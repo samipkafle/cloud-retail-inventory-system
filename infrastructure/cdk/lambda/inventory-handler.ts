@@ -11,6 +11,31 @@ const client = new DynamoDBClient({});
 
 const tableName = process.env.TABLE_NAME!;
 
+const corsHeaders = {
+  'Content-Type': 'application/json',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+};
+
+// API Gateway's Cognito authorizer stringifies group membership as
+// "[manager]" (or "[manager,other]") in event.requestContext.authorizer.claims
+function isManager(event: any): boolean {
+  const groupsClaim =
+    event.requestContext?.authorizer?.claims?.['cognito:groups'];
+  return typeof groupsClaim === 'string' && groupsClaim.includes('manager');
+}
+
+function forbidden() {
+  return {
+    statusCode: 403,
+    headers: corsHeaders,
+    body: JSON.stringify({
+      message: 'Only managers can manage products',
+    }),
+  };
+}
+
 export const handler = async (event: any) => {
   try {
     const method = event.httpMethod;
@@ -18,14 +43,20 @@ export const handler = async (event: any) => {
 
     // POST /products
     if (method === 'POST') {
+      // TEMP: manager check disabled while Cognito auth is off in
+      // cdk-stack.ts — event.requestContext.authorizer is always undefined
+      // without it, so isManager() would reject every request. Restore
+      // alongside the Cognito authorizer before demo/submission.
+      // if (!isManager(event)) {
+      //   return forbidden();
+      // }
+
       const body = JSON.parse(event.body || '{}');
 
       if (!body.productId || !body.name || body.price === undefined) {
         return {
           statusCode: 400,
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: corsHeaders,
           body: JSON.stringify({
             message: 'productId, name and price are required',
           }),
@@ -57,9 +88,7 @@ export const handler = async (event: any) => {
 
       return {
         statusCode: 201,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: corsHeaders,
         body: JSON.stringify({
           message: 'Product created successfully',
           product: body,
@@ -87,9 +116,7 @@ export const handler = async (event: any) => {
 
       return {
         statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: corsHeaders,
         body: JSON.stringify(products),
       };
     }
@@ -110,9 +137,7 @@ export const handler = async (event: any) => {
       if (!result.Item) {
         return {
           statusCode: 404,
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: corsHeaders,
           body: JSON.stringify({
             message: 'Product not found',
           }),
@@ -135,15 +160,18 @@ export const handler = async (event: any) => {
 
       return {
         statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: corsHeaders,
         body: JSON.stringify(product),
       };
     }
 
     // PUT /products/{productId}
     if (method === 'PUT' && productId) {
+      // TEMP: manager check disabled while Cognito auth is off — see POST handler above.
+      // if (!isManager(event)) {
+      //   return forbidden();
+      // }
+
       const body = JSON.parse(event.body || '{}');
 
       if (
@@ -154,9 +182,7 @@ export const handler = async (event: any) => {
       ) {
         return {
           statusCode: 400,
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: corsHeaders,
           body: JSON.stringify({
             message: 'Provide name, price, stock or reorderThreshold to update',
           }),
@@ -230,9 +256,7 @@ export const handler = async (event: any) => {
 
       return {
         statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: corsHeaders,
         body: JSON.stringify({
           message: 'Product updated successfully',
           product: updatedProduct,
@@ -242,6 +266,11 @@ export const handler = async (event: any) => {
 
     // DELETE /products/{productId}
     if (method === 'DELETE' && productId) {
+      // TEMP: manager check disabled while Cognito auth is off — see POST handler above.
+      // if (!isManager(event)) {
+      //   return forbidden();
+      // }
+
       await client.send(
         new DeleteItemCommand({
           TableName: tableName,
@@ -255,9 +284,7 @@ export const handler = async (event: any) => {
 
       return {
         statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: corsHeaders,
         body: JSON.stringify({
           message: 'Product deleted successfully',
           productId,
@@ -267,9 +294,7 @@ export const handler = async (event: any) => {
 
     return {
       statusCode: 405,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: corsHeaders,
       body: JSON.stringify({
         message: 'Method not allowed',
       }),
@@ -279,9 +304,7 @@ export const handler = async (event: any) => {
 
     return {
       statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: corsHeaders,
       body: JSON.stringify({
         message: 'Internal server error',
       }),

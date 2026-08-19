@@ -114,6 +114,24 @@ export async function updateProduct(productId, changes) {
   });
 }
 
+// Records a sale through the API (decrements stock and triggers low-stock
+// alerts server-side) or by adjusting sample-data stock directly.
+export async function recordSale(productId, quantity) {
+  if (state.mode === "demo") {
+    const product = state.products.find((item) => item.productId === productId);
+    if (!product) throw new Error("Product not found.");
+
+    product.stock = Math.max(0, product.stock - quantity);
+    saveDemoProducts();
+    return { remainingStock: product.stock, alertRaised: false };
+  }
+
+  return apiRequest("/sales", {
+    method: "POST",
+    body: { productId, quantitySold: quantity },
+  });
+}
+
 // Deletes a product through the API or sample-data storage.
 export async function deleteProduct(productId) {
   if (state.mode === "demo") {

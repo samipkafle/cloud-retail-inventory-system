@@ -359,7 +359,7 @@
 
           <section id="salesPage" class="page" data-page="sales">
             <div class="page-heading">
-              <div><p>Sales recording</p><h1>Sales</h1><span>Each sale reduces product stock through the existing PUT product API.</span></div>
+              <div><p>Sales recording</p><h1>Sales</h1><span>Each sale is recorded through the sales API, which reduces stock and raises low-stock alerts.</span></div>
               <button class="primary-button open-sale-button" type="button"><svg><use href="#icon-plus"></use></svg>Record sale</button>
             </div>
             <div class="metric-grid">
@@ -378,7 +378,7 @@
                 <div id="transactionList" class="transaction-list"></div>
               </article>
             </div>
-            <p class="integration-note"><strong>Backend note:</strong> the current AWS backend has no <code>/sales</code> endpoint. The stock reduction is saved to DynamoDB, while transaction history remains in this browser until the sales API is added.</p>
+            <p class="integration-note"><strong>Backend note:</strong> sales are recorded through the AWS <code>/sales</code> endpoint, which updates DynamoDB stock and raises low-stock alerts. Transaction history for the charts above still lives in this browser only.</p>
           </section>
 
           <section id="alertsPage" class="page" data-page="alerts">

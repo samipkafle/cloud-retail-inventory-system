@@ -14,6 +14,7 @@ import {
   readDemoProducts,
   createProduct,
   updateProduct,
+  recordSale,
   deleteProduct,
   friendlyApiError,
 } from "./api.js";
@@ -132,11 +133,16 @@ export async function handleProductSubmit(event) {
 
   try {
     if (isEditing) {
-      await updateProduct(state.editingProductId, { name, price, stock });
+      await updateProduct(state.editingProductId, {
+        name,
+        price,
+        stock,
+        reorderThreshold: reorderLevel,
+      });
       setMetadata(state.editingProductId, { category, reorderLevel });
       addActivity("stock", "Product updated", `${name} (${state.editingProductId})`);
     } else {
-      await createProduct({ productId, name, price, stock });
+      await createProduct({ productId, name, price, stock, reorderThreshold: reorderLevel });
       setMetadata(productId, { category, reorderLevel });
       addActivity("stock", "Product added", `${name} (${productId})`);
     }
@@ -179,7 +185,7 @@ export async function handleSaleSubmit(event) {
   showLoading("Recording sale and updating stock…");
 
   try {
-    await updateProduct(product.productId, { stock: product.stock - quantity });
+    const result = await recordSale(product.productId, quantity);
 
     const sale = {
       id: `SALE-${Date.now().toString().slice(-8)}`,
@@ -203,7 +209,11 @@ export async function handleSaleSubmit(event) {
     closeModal("saleModal");
     if (state.mode === "api") await loadProducts({ showLoader: false });
     else renderAll();
-    showToast(`Sale recorded. ${product.stock - quantity} units remain.`);
+    showToast(
+      result.alertRaised
+        ? `Sale recorded. ${result.remainingStock} units remain. Low-stock alert sent.`
+        : `Sale recorded. ${result.remainingStock} units remain.`,
+    );
   } catch (error) {
     setFormError("#saleFormError", friendlyApiError(error));
   } finally {
