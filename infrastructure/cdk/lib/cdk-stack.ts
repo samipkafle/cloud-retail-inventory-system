@@ -146,6 +146,29 @@ export class CdkStack extends cdk.Stack {
 
     alertsTable.grantReadData(alertsLambda);
 
+    // Inventory Status Lambda Function
+    const inventoryStatusLambda = new lambdaNodejs.NodejsFunction(
+      this,
+      'InventoryStatusLambda',
+      {
+        runtime: lambda.Runtime.NODEJS_24_X,
+
+        entry: 'lambda/inventory-status-handler.ts',
+
+        handler: 'handler',
+
+        bundling: {
+          forceDockerBundling: false,
+        },
+
+        environment: {
+          PRODUCTS_TABLE_NAME: inventoryTable.tableName,
+        },
+      }
+    );
+
+    inventoryTable.grantReadData(inventoryStatusLambda);
+
     // API Gateway
     const api = new apigateway.RestApi(this, 'InventoryApi', {
       restApiName: 'InventoryApi',
@@ -198,6 +221,15 @@ export class CdkStack extends cdk.Stack {
 
     // GET /alerts
     alerts.addMethod('GET', new apigateway.LambdaIntegration(alertsLambda));
+
+    // /inventory
+    const inventory = api.root.addResource('inventory');
+
+    // GET /inventory
+    inventory.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(inventoryStatusLambda)
+    );
 
     // API URL output
     new cdk.CfnOutput(this, 'ApiUrl', {

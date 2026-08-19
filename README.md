@@ -23,6 +23,7 @@ The project demonstrates cloud engineering practices using AWS serverless servic
 * Product creation, retrieval, update and deletion (full CRUD)
 * Record daily sales, with inventory automatically updated on each valid sale
 * Reject sales that would exceed available stock
+* Current stock and low-stock status for every product (`GET /inventory`)
 * Automated low-stock alert history, stored and retrievable via the API
 * Automated low-stock email notifications via Amazon SNS
 * REST API using API Gateway
@@ -106,6 +107,7 @@ The current API supports the following operations:
 | PUT    | `/products/{productId}`  | Update a product                     |
 | DELETE | `/products/{productId}`  | Delete a product                     |
 | POST   | `/sales`                 | Record a sale (updates stock, rejects oversell, raises alert if low) |
+| GET    | `/inventory`             | Retrieve current stock and low-stock status for every product |
 | GET    | `/alerts`                | Retrieve low-stock alert history     |
 
 ### Example Product
@@ -142,7 +144,7 @@ AWS infrastructure is deployed using AWS CDK.
 Current infrastructure includes:
 
 * DynamoDB tables (products, sales, alerts)
-* Lambda functions (products, sales, alerts)
+* Lambda functions (products, sales, alerts, inventory status)
 * API Gateway REST API
 * SNS topic with email subscription for low-stock notifications
 * IAM roles and permissions
@@ -208,6 +210,7 @@ Documentation includes:
 * [x] API Gateway
 * [x] Product CRUD API
 * [x] Sales recording API with automatic inventory update
+* [x] Inventory/stock overview endpoint with low-stock status
 * [x] Low-stock alert history API
 * [x] SNS email notifications for low-stock alerts
 * [x] API testing using Postman
@@ -216,7 +219,6 @@ Documentation includes:
 
 ### In Progress
 
-* [ ] Inventory/stock overview endpoint
 * [ ] CloudWatch dashboard
 * [ ] Sales reporting and CSV export
 
