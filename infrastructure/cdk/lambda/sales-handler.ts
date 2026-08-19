@@ -4,13 +4,16 @@ import {
   UpdateItemCommand,
   PutItemCommand,
 } from '@aws-sdk/client-dynamodb';
+import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 import { randomUUID } from 'crypto';
 
 const client = new DynamoDBClient({});
+const snsClient = new SNSClient({});
 
 const productsTableName = process.env.PRODUCTS_TABLE_NAME!;
 const salesTableName = process.env.SALES_TABLE_NAME!;
 const alertsTableName = process.env.ALERTS_TABLE_NAME!;
+const lowStockTopicArn = process.env.LOW_STOCK_TOPIC_ARN!;
 
 // POST /sales
 export const handler = async (event: any) => {
@@ -137,6 +140,20 @@ export const handler = async (event: any) => {
           },
         })
       );
+
+      // Notification is best-effort: the sale and alert history are already
+      // committed, so a failure here shouldn't fail the whole request.
+      try {
+        await snsClient.send(
+          new PublishCommand({
+            TopicArn: lowStockTopicArn,
+            Subject: `Low stock alert: ${productId}`,
+            Message: `Product ${productId} is low on stock.\n\nStock remaining: ${updatedStock}\nReorder threshold: ${reorderThreshold}\nAlert raised at: ${soldAt}`,
+          })
+        );
+      } catch (snsError) {
+        console.error('Failed to publish low-stock notification:', snsError);
+      }
     }
 
     return {

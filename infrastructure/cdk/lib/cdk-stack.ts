@@ -4,6 +4,8 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as lambdaNodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
+import * as sns from 'aws-cdk-lib/aws-sns';
+import * as subscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
 
 export class CdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -65,6 +67,15 @@ export class CdkStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
+    // SNS Topic for low-stock notifications
+    const lowStockTopic = new sns.Topic(this, 'LowStockTopic', {
+      topicName: 'RetailLowStockAlerts',
+    });
+
+    lowStockTopic.addSubscription(
+      new subscriptions.EmailSubscription('advancedproject6150@gmail.com')
+    );
+
     // Lambda Function
     const inventoryLambda = new lambdaNodejs.NodejsFunction(
       this,
@@ -105,6 +116,7 @@ export class CdkStack extends cdk.Stack {
         PRODUCTS_TABLE_NAME: inventoryTable.tableName,
         SALES_TABLE_NAME: salesTable.tableName,
         ALERTS_TABLE_NAME: alertsTable.tableName,
+        LOW_STOCK_TOPIC_ARN: lowStockTopic.topicArn,
       },
     });
 
@@ -113,6 +125,7 @@ export class CdkStack extends cdk.Stack {
     inventoryTable.grantReadWriteData(salesLambda);
     salesTable.grantWriteData(salesLambda);
     alertsTable.grantWriteData(salesLambda);
+    lowStockTopic.grantPublish(salesLambda);
 
     // Alerts Lambda Function
     const alertsLambda = new lambdaNodejs.NodejsFunction(this, 'AlertsLambda', {

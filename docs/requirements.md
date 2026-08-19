@@ -12,7 +12,7 @@ Source of truth: the NIT6150 System Analysis and Design (SAD) Report (approved 1
 | FR-04 | Automatically update inventory after each valid sale | Must | Implemented (`POST /sales`) |
 | FR-05 | Reject sales that exceed available stock | Must | Implemented (`POST /sales`, conditional update) |
 | FR-06 | Display current stock and low-stock products | Must | Not started (`GET /inventory`) |
-| FR-07 | Publish low-stock notifications and store alert history | Must | Partially implemented — alert history is written on each sale and readable via `GET /alerts`; SNS notification publishing not started |
+| FR-07 | Publish low-stock notifications and store alert history | Must | Implemented — alert history is written on each sale and readable via `GET /alerts`; an SNS topic (`RetailLowStockAlerts`) emails a low-stock notification whenever an alert is raised |
 | FR-08 | Generate sales reports and export report files | Should | Not started |
 | FR-09 | Calculate smart reorder quantities using 14-day sales velocity | Must | Not started |
 | FR-10 | Train and display demand recommendations using historical sales patterns | Must | Not started |
