@@ -403,4 +403,36 @@
     9. Should model training happen inside Lambda or should a pre-trained model be loaded? 
     10. What exact JSON structure will GET /recommendations return?
 
+## DynamoDB and AI Data Mapping
+    |AI requirement           |	DynamoDB source     |	Field          |
+    |-------------------------|---------------------|------------------|
+    |Identify product         |	Product/Sale        | productId        |
+    |Product category         |	Product	            | category         |
+    |Current stock            |	Product             | quantityOnHand   |
+    |Low-stock threshold      |	Product	            | reorderThreshold |
+    |Historical quantity sold |	Sale	            | quantitySold     |
+    |Sale date/time	          | Sale                | soldAt           |
+    |7-day demand	          |Calculated from Sale | Derived          |
+    |14-day demand	          |Calculated from Sale | Derived          |
+    |Sales velocity	          |Calculated from Sale | Derived          |
+    |Growth rate	          |Calculated from Sale | Derived          |
+    |Predicted demand         |AI model	            | predictedDemand  |
+    |Demand trend	          |AI model	            | trendLabel       |
+    |Model tracking	          |AI model	            | modelVersion     |
+
+## Confirmed DynamoDB Alignment
+    The AI component will use the same Product and Sale structures as the backend. 
+    Product: 
+    - productId 
+    - name 
+    - category 
+    - unitPrice 
+    - reorderThreshold 
+    - quantityOnHand 
+    Sale: 
+    - saleId 
+    - productId 
+    - quantitySold 
+    - soldAt 
+    AI features such as salesLast14Days and salesGrowthRate will be derived during feature engineering and will not require additional attributes in the Sale table.
 ## FR-11 Insights Dashboard Data Requirements
