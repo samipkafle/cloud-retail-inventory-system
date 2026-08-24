@@ -1,8 +1,8 @@
 # Requirements Tracebility Matrix
 
 
-| Requirement | Feature                   | Implementation | API                   | Testing | Owner            |
-|-------------|---------------------------|----------------|-----------------------|---------|------------------|
-| FR-09       | Smart Restocking Forecast | TBD            | /forecast/{productId} | TBD     | Anish / Samip    |
-| FR-10       | AI Demand Insights        | TBD            | /recommendations      | TBD     | Anish / Samip    |
-| FR-11       | Insights Dashboard        | TBD            | /recommendations      | TBD     | Virasanh / Anish |
+| Requirement | Feature                   |Endpoint                   | Implementation                        | Owner         |
+|-------------|---------------------------|---------------------------|---------------------------------------|---------------|
+| FR-09       | Smart Restocking Forecast | GET /forecast/{productId} |14-day sales velocity + reorder logic  |Anish/Samip    |
+| FR-10       | AI Demand Insights        | GET /recommendations      |Demand prediction, trend and ranking   |Anish/Samip    |
+| FR-11       | Insights Dashboard        | GET /recommendations      |Bar/Pie/trend visualiasation           | Virasanh      |

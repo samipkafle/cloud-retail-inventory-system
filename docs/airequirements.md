@@ -435,4 +435,8 @@
     - quantitySold 
     - soldAt 
     AI features such as salesLast14Days and salesGrowthRate will be derived during feature engineering and will not require additional attributes in the Sale table.
-## FR-11 Insights Dashboard Data Requirements
+
+## Innovation API Review
+### GET /forecast/{productId}
+    GET /forecast/{productId} returns the smart-restocking forecast for a selected product. The forecast uses recent product sales, including the 14-day sales velocity, together with current stock information to support a suggested reorder quantity.
+
