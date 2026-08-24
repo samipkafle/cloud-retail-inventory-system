@@ -450,9 +450,24 @@
               <article class="metric-card"><div><span>Last checked</span><strong id="monitorLastCheck">—</strong><small>Local browser time</small></div><span class="metric-icon amber"><svg><use href="#icon-refresh"></use></svg></span></article>
             </div>
             <article class="content-card monitoring-card">
-              <div class="card-head"><div><span class="section-kicker">Connection events</span><h2>Frontend health log</h2></div></div>
+              <div class="card-head"><div><span class="section-kicker">Connection events</span><h2>Frontend health log</h2></div><small>This browser tab only</small></div>
               <div id="monitorLog" class="monitor-log"></div>
-              <p class="integration-note"><strong>Cloud monitoring:</strong> Lambda errors, invocations, duration and alarms should be viewed in the AWS CloudWatch dashboard. They are not exposed by the current product API.</p>
+            </article>
+
+            <article class="content-card monitoring-card">
+              <div class="card-head"><div><span class="section-kicker">CloudWatch</span><h2>Aggregated frontend health</h2><span id="telemetrySummaryWindow">All sessions · last 60 minutes</span></div><button id="refreshTelemetryButton" class="secondary-button" type="button"><svg><use href="#icon-refresh"></use></svg>Refresh</button></div>
+              <div class="metric-grid">
+                <article class="metric-card"><div><span>Errors</span><strong id="telemetryErrorCount">—</strong><small>FrontendErrorCount</small></div><span class="metric-icon amber"><svg><use href="#icon-bell"></use></svg></span></article>
+                <article class="metric-card"><div><span>Successful events</span><strong id="telemetrySuccessCount">—</strong><small>FrontendSuccessCount</small></div><span class="metric-icon green"><svg><use href="#icon-check"></use></svg></span></article>
+                <article class="metric-card"><div><span>Avg response time</span><strong id="telemetryAvgResponse">—</strong><small>FrontendResponseTime</small></div><span class="metric-icon blue"><svg><use href="#icon-chart"></use></svg></span></article>
+              </div>
+              <p id="telemetrySummaryNote" class="integration-note"></p>
+            </article>
+
+            <article class="content-card monitoring-card">
+              <div class="card-head"><div><span class="section-kicker">CloudWatch Logs Insights</span><h2>Recent frontend events</h2></div><small>All sessions · last 24 hours</small></div>
+              <div id="telemetryEventLog" class="monitor-log"></div>
+              <p id="telemetryEventsNote" class="integration-note"></p>
             </article>
           </section>
         </main>

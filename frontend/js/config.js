@@ -71,5 +71,9 @@ export const state = {
   lastCheckedAt: null,
   apiStatus: "checking",
   monitorEvents: [],
+  telemetrySummary: null,
+  telemetrySummaryError: null,
+  telemetryEvents: null,
+  telemetryEventsError: null,
   toastTimer: null,
 };

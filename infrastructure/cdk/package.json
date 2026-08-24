@@ -18,6 +18,8 @@
     "typescript": "~5.7.2"
   },
   "dependencies": {
+    "@aws-sdk/client-cloudwatch": "^3.1116.0",
+    "@aws-sdk/client-cloudwatch-logs": "^3.1116.0",
     "@aws-sdk/client-dynamodb": "^3.1106.0",
     "@aws-sdk/client-sns": "^3.1113.0",
     "@aws-sdk/lib-dynamodb": "^3.1106.0",

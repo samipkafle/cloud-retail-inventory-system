@@ -17,6 +17,8 @@ import {
   recordSale,
   deleteProduct,
   friendlyApiError,
+  getTelemetrySummary,
+  getTelemetryEvents,
 } from "./api.js";
 import {
   showLoading,
@@ -81,6 +83,33 @@ export async function loadProducts({ showLoader = true } = {}) {
   } finally {
     if (showLoader) hideLoading();
   }
+}
+
+// Loads the CloudWatch-aggregated frontend health summary (all sessions),
+// shown on the Monitoring page alongside this tab's own local event log.
+export async function loadTelemetrySummary(minutes = 60) {
+  try {
+    state.telemetrySummary = await getTelemetrySummary(minutes);
+    state.telemetrySummaryError = null;
+  } catch (error) {
+    state.telemetrySummary = null;
+    state.telemetrySummaryError = friendlyApiError(error);
+  }
+  renderAll();
+}
+
+// Loads the most recent raw frontend events (all sessions) from the
+// CloudWatch Logs Insights-backed detail log on the Monitoring page.
+export async function loadTelemetryEvents(limit = 50) {
+  try {
+    const response = await getTelemetryEvents(limit);
+    state.telemetryEvents = response?.events || [];
+    state.telemetryEventsError = null;
+  } catch (error) {
+    state.telemetryEvents = null;
+    state.telemetryEventsError = friendlyApiError(error);
+  }
+  renderAll();
 }
 
 // Validates the product form and creates or updates a product. POST or PUT Function

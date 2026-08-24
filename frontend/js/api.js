@@ -20,6 +20,39 @@ export function friendlyApiError(error) {
   return error?.message || "The product API returned an unexpected error.";
 }
 
+// Reports a frontend health/error event to CloudWatch via the telemetry
+// endpoint. Fire-and-forget: monitoring must never disrupt the UI.
+export function sendTelemetry(status, message, duration = null) {
+  if (!state.apiUrl) return;
+
+  const url = `${state.apiUrl.replace(/\/+$/, "")}/telemetry`;
+
+  fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      status,
+      message,
+      duration,
+      page: state.currentPage,
+    }),
+    keepalive: true,
+    mode: "cors",
+  }).catch(() => {});
+}
+
+// Reads back CloudWatch's aggregated frontend metrics (all sessions, not
+// just this browser tab) for the given trailing window.
+export function getTelemetrySummary(minutes = 60) {
+  return apiRequest(`/telemetry?minutes=${minutes}`);
+}
+
+// Reads back the most recent raw frontend events (all sessions) via the
+// CloudWatch Logs Insights-backed detail log on the Monitoring page.
+export function getTelemetryEvents(limit = 50) {
+  return apiRequest(`/telemetry/events?limit=${limit}`);
+}
+
 // Sends a request to the configured AWS API.
 export async function apiRequest(path = "", options = {}) {
   const controller = new AbortController();

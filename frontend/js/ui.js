@@ -1,6 +1,7 @@
 import { state, ROLE_PROFILES } from "./config.js";
 import { getMetadata } from "./inventory.js";
 import { $, $$, escapeHtml, initials } from "./utils.js";
+import { sendTelemetry } from "./api.js";
 
 // Displays the loading overlay with a selected message.
 export function showLoading(message = "Loading products…") {
@@ -44,7 +45,8 @@ export function setConnectionStatus(status, message) {
   $("#connectionText").textContent = message;
 }
 
-// Records an API connection result in the frontend monitoring log.
+// Records an API connection result in the frontend monitoring log and
+// forwards it to CloudWatch (via the telemetry endpoint) for the backend view.
 export function recordMonitorEvent(status, message, duration = null) {
   state.monitorEvents.unshift({
     status,
@@ -53,6 +55,7 @@ export function recordMonitorEvent(status, message, duration = null) {
     createdAt: new Date().toISOString(),
   });
   state.monitorEvents = state.monitorEvents.slice(0, 20);
+  sendTelemetry(status, message, duration);
 }
 
 // Opens a selected modal window.

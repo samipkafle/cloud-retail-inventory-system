@@ -9,6 +9,9 @@ import * as subscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
+import * as cloudwatchActions from 'aws-cdk-lib/aws-cloudwatch-actions';
 
 export class CdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -222,6 +225,83 @@ export class CdkStack extends cdk.Stack {
 
     inventoryTable.grantReadData(inventoryStatusLambda);
 
+    // Telemetry Lambda Function — POST records frontend health/error events
+    // as CloudWatch custom metrics (see js/api.js sendTelemetry); GET reads
+    // them back as an aggregated summary (see js/api.js getTelemetrySummary)
+    const telemetryLambda = new lambdaNodejs.NodejsFunction(
+      this,
+      'TelemetryLambda',
+      {
+        // Set explicitly (rather than left to CDK auto-naming) so the
+        // logs:StartQuery policy below can reference this as a literal
+        // string instead of telemetryLambda.functionName — a self-reference
+        // via the function's own token creates a circular CFN dependency
+        // between the function's role policy and the function itself, which
+        // then drags in the whole API (Deployment/Stage depend on every
+        // method, including this function's). See aws/aws-cdk#11020.
+        functionName: 'GreenLeaf-TelemetryLambda',
+
+        runtime: lambda.Runtime.NODEJS_24_X,
+
+        entry: 'lambda/telemetry-handler.ts',
+
+        handler: 'handler',
+
+        // GET /telemetry/events polls a CloudWatch Logs Insights query to
+        // completion synchronously, which usually takes a couple of seconds —
+        // comfortably past the default 3s Lambda timeout.
+        timeout: cdk.Duration.seconds(20),
+
+        bundling: {
+          forceDockerBundling: false,
+        },
+
+        environment: {
+          METRIC_NAMESPACE: 'GreenLeaf/Frontend',
+        },
+      }
+    );
+
+    // PutMetricData/GetMetricData have no resource-level permissions — they
+    // must be granted on "*", which is expected/required for CloudWatch.
+    telemetryLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['cloudwatch:PutMetricData', 'cloudwatch:GetMetricData'],
+        resources: ['*'],
+      })
+    );
+
+    // GET /telemetry/events runs a Logs Insights query against this
+    // function's own log group (created implicitly by Lambda/CDK, so the
+    // name is predicted rather than referenced as a construct).
+    telemetryLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['logs:StartQuery', 'logs:GetQueryResults'],
+        resources: [
+          `arn:aws:logs:${this.region}:${this.account}:log-group:/aws/lambda/GreenLeaf-TelemetryLambda:*`,
+        ],
+      })
+    );
+
+    // Alarm when the frontend reports 3+ errors in a 5-minute window; reuses
+    // the same SNS topic as low-stock alerts so both flow into one inbox.
+    const frontendErrorAlarm = new cloudwatch.Alarm(this, 'FrontendErrorAlarm', {
+      alarmName: 'GreenLeafFrontendErrors',
+      metric: new cloudwatch.Metric({
+        namespace: 'GreenLeaf/Frontend',
+        metricName: 'FrontendErrorCount',
+        statistic: 'Sum',
+        period: cdk.Duration.minutes(5),
+      }),
+      threshold: 3,
+      evaluationPeriods: 1,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    frontendErrorAlarm.addAlarmAction(
+      new cloudwatchActions.SnsAction(lowStockTopic)
+    );
+
     // API Gateway
     const api = new apigateway.RestApi(this, 'InventoryApi', {
       restApiName: 'InventoryApi',
@@ -308,6 +388,33 @@ export class CdkStack extends cdk.Stack {
     inventory.addMethod(
       'GET',
       new apigateway.LambdaIntegration(inventoryStatusLambda),
+      authOptions
+    );
+
+    // /telemetry
+    const telemetry = api.root.addResource('telemetry');
+
+    // POST /telemetry
+    telemetry.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(telemetryLambda),
+      authOptions
+    );
+
+    // GET /telemetry?minutes=60
+    telemetry.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(telemetryLambda),
+      authOptions
+    );
+
+    // /telemetry/events
+    const telemetryEvents = telemetry.addResource('events');
+
+    // GET /telemetry/events?limit=50
+    telemetryEvents.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(telemetryLambda),
       authOptions
     );
 

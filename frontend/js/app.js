@@ -3,6 +3,8 @@ import { loadJson, saveJson } from "./storage.js";
 import { $, $$ } from "./utils.js";
 import {
   loadProducts,
+  loadTelemetrySummary,
+  loadTelemetryEvents,
   handleProductSubmit,
   handleSaleSubmit,
   handleConfirmDelete,
@@ -26,6 +28,7 @@ import {
   closeSidebar,
   selectRole,
   setFormError,
+  recordMonitorEvent,
 } from "./ui.js";
 import { renderInventory } from "./render.js";
 
@@ -85,6 +88,37 @@ function handleActionClick(event) {
   if (button.dataset.action === "restock") restockProduct(productId);
 }
 
+// Auto-refreshes the Monitoring page's CloudWatch summary and event log
+// every 30s while it's the active page; stops itself once the user
+// navigates elsewhere.
+let telemetryRefreshTimer = null;
+
+function startTelemetryAutoRefresh() {
+  if (telemetryRefreshTimer) return;
+
+  telemetryRefreshTimer = window.setInterval(() => {
+    if (state.currentPage !== "monitoring") {
+      window.clearInterval(telemetryRefreshTimer);
+      telemetryRefreshTimer = null;
+      return;
+    }
+    loadTelemetrySummary();
+    loadTelemetryEvents();
+  }, 30000);
+}
+
+// Opens a dashboard page, pulling the CloudWatch summary and event log the
+// first time the Monitoring page is opened so it isn't showing stale/empty
+// data.
+function goToPage(page) {
+  navigateTo(page);
+  if (page === "monitoring") {
+    if (!state.telemetrySummary) loadTelemetrySummary();
+    if (!state.telemetryEvents) loadTelemetryEvents();
+    startTelemetryAutoRefresh();
+  }
+}
+
 // Connects buttons, forms and page controls to their functions.
 function bindEvents() {
   $("#loginForm").addEventListener("submit", handleLogin);
@@ -95,11 +129,11 @@ function bindEvents() {
 
   $("#mainNavigation").addEventListener("click", (event) => {
     const button = event.target.closest("[data-page]");
-    if (button) navigateTo(button.dataset.page);
+    if (button) goToPage(button.dataset.page);
   });
 
   $$(".page-link").forEach((button) => {
-    button.addEventListener("click", () => navigateTo(button.dataset.targetPage));
+    button.addEventListener("click", () => goToPage(button.dataset.targetPage));
   });
 
   $("#topAlertButton").addEventListener("click", () => {
@@ -132,6 +166,10 @@ function bindEvents() {
   $("#refreshButton").addEventListener("click", () => loadProducts());
   $("#retryApiButton").addEventListener("click", () => loadProducts());
   $("#runHealthCheckButton").addEventListener("click", () => loadProducts());
+  $("#refreshTelemetryButton").addEventListener("click", () => {
+    loadTelemetrySummary();
+    loadTelemetryEvents();
+  });
   $("#useDemoButton").addEventListener("click", useDemoMode);
   $("#apiDemoModeButton").addEventListener("click", useDemoMode);
   $("#connectionButton").addEventListener("click", openApiModal);
@@ -164,9 +202,25 @@ function bindEvents() {
   });
 }
 
+// Reports uncaught JS errors to the frontend monitoring log/CloudWatch so
+// bugs that never reach the API layer are still visible.
+function bindErrorReporting() {
+  window.addEventListener("error", (event) => {
+    recordMonitorEvent("error", event.message || "Unhandled JS error");
+  });
+
+  window.addEventListener("unhandledrejection", (event) => {
+    recordMonitorEvent(
+      "error",
+      `Unhandled promise rejection: ${event.reason?.message || event.reason}`,
+    );
+  });
+}
+
 // Initialises the application after the HTML page loads.
 export function initialise() {
   bindEvents();
+  bindErrorReporting();
   selectRole("manager");
   $("#apiUrlInput").value = state.apiUrl;
 

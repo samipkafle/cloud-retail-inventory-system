@@ -465,23 +465,72 @@ export function renderMonitoring() {
     log.innerHTML = `<div class="empty-state">${icon(
       "cloud",
     )}<strong>No connection checks yet</strong><span>Run a health check to call GET /products.</span></div>`;
-    return;
+  } else {
+    log.innerHTML = state.monitorEvents
+      .map(
+        (event) =>
+          `<div class="monitor-entry"><time>${escapeHtml(
+            formatTime(event.createdAt),
+          )}</time><b class="${event.status}">${
+            event.status === "success" ? "SUCCESS" : "ERROR"
+          }</b><span>${escapeHtml(event.message)}</span><small>${
+            event.duration === null
+              ? "—"
+              : event.duration === 0
+                ? "Local"
+                : `${event.duration} ms`
+          }</small></div>`,
+      )
+      .join("");
   }
 
-  log.innerHTML = state.monitorEvents
-    .map(
-      (event) =>
-        `<div class="monitor-entry"><time>${escapeHtml(
-          formatTime(event.createdAt),
-        )}</time><b class="${event.status}">${
-          event.status === "success" ? "SUCCESS" : "ERROR"
-        }</b><span>${escapeHtml(event.message)}</span><small>${
-          event.duration === null
-            ? "—"
-            : event.duration === 0
-              ? "Local"
-              : `${event.duration} ms`
-        }</small></div>`,
-    )
-    .join("");
+  const summary = state.telemetrySummary;
+  $("#telemetryErrorCount").textContent = summary ? summary.errorCount : "—";
+  $("#telemetrySuccessCount").textContent = summary ? summary.successCount : "—";
+  $("#telemetryAvgResponse").textContent =
+    summary && summary.avgResponseMs ? `${summary.avgResponseMs} ms` : "—";
+  $("#telemetrySummaryWindow").textContent = summary
+    ? `All sessions · last ${summary.windowMinutes} minutes`
+    : "All sessions";
+
+  const note = $("#telemetrySummaryNote");
+  if (state.telemetrySummaryError) {
+    note.textContent = `Couldn't load CloudWatch summary: ${state.telemetrySummaryError}`;
+  } else if (summary) {
+    note.textContent = `Read from CloudWatch namespace GreenLeaf/Frontend, generated at ${formatTime(summary.generatedAt)}.`;
+  } else {
+    note.textContent = "Click Refresh to pull aggregated metrics from CloudWatch.";
+  }
+
+  const events = state.telemetryEvents;
+  const eventLog = $("#telemetryEventLog");
+  if (!events || !events.length) {
+    eventLog.innerHTML = `<div class="empty-state">${icon(
+      "cloud",
+    )}<strong>No events yet</strong><span>Recent frontend events across all sessions appear here.</span></div>`;
+  } else {
+    eventLog.innerHTML = events
+      .map(
+        (event) =>
+          `<div class="monitor-entry"><time>${escapeHtml(
+            event.receivedAt ? formatTime(event.receivedAt) : "—",
+          )}</time><b class="${event.status}">${
+            event.status === "error" ? "ERROR" : "SUCCESS"
+          }</b><span>${escapeHtml(event.message || "No message")} · ${escapeHtml(
+            event.page || "unknown",
+          )}</span><small>${
+            event.duration === null ? "—" : `${event.duration} ms`
+          }</small></div>`,
+      )
+      .join("");
+  }
+
+  const eventsNote = $("#telemetryEventsNote");
+  if (state.telemetryEventsError) {
+    eventsNote.textContent = `Couldn't load CloudWatch Logs Insights events: ${state.telemetryEventsError}`;
+  } else if (events) {
+    eventsNote.textContent = `${events.length} most recent event${events.length === 1 ? "" : "s"} from CloudWatch Logs Insights.`;
+  } else {
+    eventsNote.textContent = "Click Refresh to pull recent events from CloudWatch Logs.";
+  }
 }
