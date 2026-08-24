@@ -15,15 +15,29 @@ const salesTableName = process.env.SALES_TABLE_NAME!;
 const alertsTableName = process.env.ALERTS_TABLE_NAME!;
 const lowStockTopicArn = process.env.LOW_STOCK_TOPIC_ARN!;
 
+<<<<<<< HEAD
+=======
+const corsHeaders = {
+  'Content-Type': 'application/json',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+};
+
+>>>>>>> origin/virasanh
 // POST /sales
 export const handler = async (event: any) => {
   try {
     if (event.httpMethod !== 'POST') {
       return {
         statusCode: 405,
+<<<<<<< HEAD
         headers: {
           'Content-Type': 'application/json',
         },
+=======
+        headers: corsHeaders,
+>>>>>>> origin/virasanh
         body: JSON.stringify({
           message: 'Method not allowed',
         }),
@@ -36,9 +50,13 @@ export const handler = async (event: any) => {
     if (!productId || !(Number(quantitySold) > 0)) {
       return {
         statusCode: 400,
+<<<<<<< HEAD
         headers: {
           'Content-Type': 'application/json',
         },
+=======
+        headers: corsHeaders,
+>>>>>>> origin/virasanh
         body: JSON.stringify({
           message: 'productId and a positive quantitySold are required',
         }),
@@ -57,9 +75,13 @@ export const handler = async (event: any) => {
     if (!productResult.Item) {
       return {
         statusCode: 404,
+<<<<<<< HEAD
         headers: {
           'Content-Type': 'application/json',
         },
+=======
+        headers: corsHeaders,
+>>>>>>> origin/virasanh
         body: JSON.stringify({
           message: 'Product not found',
         }),
@@ -97,9 +119,13 @@ export const handler = async (event: any) => {
       if (err.name === 'ConditionalCheckFailedException') {
         return {
           statusCode: 400,
+<<<<<<< HEAD
           headers: {
             'Content-Type': 'application/json',
           },
+=======
+          headers: corsHeaders,
+>>>>>>> origin/virasanh
           body: JSON.stringify({
             message: 'Sale rejected: quantitySold exceeds available stock',
           }),
@@ -158,9 +184,13 @@ export const handler = async (event: any) => {
 
     return {
       statusCode: 201,
+<<<<<<< HEAD
       headers: {
         'Content-Type': 'application/json',
       },
+=======
+      headers: corsHeaders,
+>>>>>>> origin/virasanh
       body: JSON.stringify({
         message: 'Sale recorded successfully',
         sale: {
@@ -178,9 +208,13 @@ export const handler = async (event: any) => {
 
     return {
       statusCode: 500,
+<<<<<<< HEAD
       headers: {
         'Content-Type': 'application/json',
       },
+=======
+      headers: corsHeaders,
+>>>>>>> origin/virasanh
       body: JSON.stringify({
         message: 'Internal server error',
       }),

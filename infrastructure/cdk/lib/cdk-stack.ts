@@ -6,6 +6,12 @@ import * as lambdaNodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as subscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
+<<<<<<< HEAD
+=======
+import * as cognito from 'aws-cdk-lib/aws-cognito';
+import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
+>>>>>>> origin/virasanh
 
 export class CdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -76,6 +82,59 @@ export class CdkStack extends cdk.Stack {
       new subscriptions.EmailSubscription('advancedproject6150@gmail.com')
     );
 
+<<<<<<< HEAD
+=======
+    // Cognito User Pool for authentication (FR-01). Sign-up is admin-only
+    // (staff accounts are provisioned by a manager/admin, not self-service),
+    // matching a retail-staff app rather than a public consumer app.
+    const userPool = new cognito.UserPool(this, 'UserPool', {
+      userPoolName: 'RetailUserPool',
+      selfSignUpEnabled: false,
+      signInAliases: {
+        email: true,
+      },
+      standardAttributes: {
+        email: {
+          required: true,
+          mutable: false,
+        },
+      },
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    const userPoolClient = new cognito.UserPoolClient(this, 'UserPoolClient', {
+      userPool,
+      generateSecret: false,
+      authFlows: {
+        userPassword: true,
+        adminUserPassword: true,
+      },
+      // Extended from the 1-hour default for easier manual testing/demoing;
+      // revisit before this becomes a real production login flow.
+      idTokenValidity: cdk.Duration.hours(24),
+      accessTokenValidity: cdk.Duration.hours(24),
+    });
+
+    // Manager role group. Members can manage products; everyone else who
+    // authenticates is treated as staff (record sales, view inventory/alerts
+    // only) — matches the Manage products vs Record sale use cases.
+    new cognito.CfnUserPoolGroup(this, 'ManagerGroup', {
+      userPoolId: userPool.userPoolId,
+      groupName: 'manager',
+    });
+
+    // TEMP: unused while auth is disabled below (CDK synth rejects an
+    // authorizer that isn't attached to any method on the RestApi).
+    // Restore alongside authOptions before demo/submission.
+    // const apiAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(
+    //   this,
+    //   'ApiAuthorizer',
+    //   {
+    //     cognitoUserPools: [userPool],
+    //   }
+    // );
+
+>>>>>>> origin/virasanh
     // Lambda Function
     const inventoryLambda = new lambdaNodejs.NodejsFunction(
       this,
@@ -172,14 +231,33 @@ export class CdkStack extends cdk.Stack {
     // API Gateway
     const api = new apigateway.RestApi(this, 'InventoryApi', {
       restApiName: 'InventoryApi',
+<<<<<<< HEAD
     });
 
+=======
+      defaultCorsPreflightOptions: {
+        allowOrigins: apigateway.Cors.ALL_ORIGINS,
+        allowMethods: apigateway.Cors.ALL_METHODS,
+        allowHeaders: ['Content-Type'],
+      },
+    });
+
+    // Every route requires a valid Cognito ID token (FR-01)
+    // TEMP: auth disabled for testing — restore COGNITO authorizer before demo/submission.
+    const authOptions: apigateway.MethodOptions = {
+      // authorizer: apiAuthorizer, // uncomment apiAuthorizer above too
+      // authorizationType: apigateway.AuthorizationType.COGNITO,
+      authorizationType: apigateway.AuthorizationType.NONE,
+    };
+
+>>>>>>> origin/virasanh
     // /products
     const products = api.root.addResource('products');
 
     // GET /products
     products.addMethod(
       'GET',
+<<<<<<< HEAD
       new apigateway.LambdaIntegration(inventoryLambda)
     );
 
@@ -187,6 +265,17 @@ export class CdkStack extends cdk.Stack {
     products.addMethod(
       'POST',
       new apigateway.LambdaIntegration(inventoryLambda)
+=======
+      new apigateway.LambdaIntegration(inventoryLambda),
+      authOptions
+    );
+
+    // POST /products (role-checked in the handler: manager only)
+    products.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(inventoryLambda),
+      authOptions
+>>>>>>> origin/virasanh
     );
 
     // /products/{productId}
@@ -195,6 +284,7 @@ export class CdkStack extends cdk.Stack {
     // GET /products/{productId}
     product.addMethod(
       'GET',
+<<<<<<< HEAD
       new apigateway.LambdaIntegration(inventoryLambda)
     );
 
@@ -208,19 +298,53 @@ export class CdkStack extends cdk.Stack {
     product.addMethod(
       'DELETE',
       new apigateway.LambdaIntegration(inventoryLambda)
+=======
+      new apigateway.LambdaIntegration(inventoryLambda),
+      authOptions
+    );
+
+    // PUT /products/{productId} (role-checked in the handler: manager only)
+    product.addMethod(
+      'PUT',
+      new apigateway.LambdaIntegration(inventoryLambda),
+      authOptions
+    );
+
+    // DELETE /products/{productId} (role-checked in the handler: manager only)
+    product.addMethod(
+      'DELETE',
+      new apigateway.LambdaIntegration(inventoryLambda),
+      authOptions
+>>>>>>> origin/virasanh
     );
 
     // /sales
     const sales = api.root.addResource('sales');
 
     // POST /sales
+<<<<<<< HEAD
     sales.addMethod('POST', new apigateway.LambdaIntegration(salesLambda));
+=======
+    sales.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(salesLambda),
+      authOptions
+    );
+>>>>>>> origin/virasanh
 
     // /alerts
     const alerts = api.root.addResource('alerts');
 
     // GET /alerts
+<<<<<<< HEAD
     alerts.addMethod('GET', new apigateway.LambdaIntegration(alertsLambda));
+=======
+    alerts.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(alertsLambda),
+      authOptions
+    );
+>>>>>>> origin/virasanh
 
     // /inventory
     const inventory = api.root.addResource('inventory');
@@ -228,13 +352,54 @@ export class CdkStack extends cdk.Stack {
     // GET /inventory
     inventory.addMethod(
       'GET',
+<<<<<<< HEAD
       new apigateway.LambdaIntegration(inventoryStatusLambda)
     );
 
+=======
+      new apigateway.LambdaIntegration(inventoryStatusLambda),
+      authOptions
+    );
+
+    // S3 bucket hosting the static frontend (public read, website mode)
+    const frontendBucket = new s3.Bucket(this, 'FrontendBucket', {
+      websiteIndexDocument: 'index.html',
+      publicReadAccess: true,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ACLS_ONLY,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+    });
+
+    new s3deploy.BucketDeployment(this, 'FrontendDeployment', {
+      sources: [s3deploy.Source.asset('../../frontend')],
+      destinationBucket: frontendBucket,
+    });
+
+>>>>>>> origin/virasanh
     // API URL output
     new cdk.CfnOutput(this, 'ApiUrl', {
       value: api.url,
       description: 'Inventory API URL',
     });
+<<<<<<< HEAD
   }
 }
+=======
+
+    new cdk.CfnOutput(this, 'FrontendUrl', {
+      value: frontendBucket.bucketWebsiteUrl,
+      description: 'Frontend website URL',
+    });
+
+    new cdk.CfnOutput(this, 'UserPoolId', {
+      value: userPool.userPoolId,
+      description: 'Cognito User Pool ID',
+    });
+
+    new cdk.CfnOutput(this, 'UserPoolClientId', {
+      value: userPoolClient.userPoolClientId,
+      description: 'Cognito User Pool Client ID',
+    });
+  }
+}
+>>>>>>> origin/virasanh

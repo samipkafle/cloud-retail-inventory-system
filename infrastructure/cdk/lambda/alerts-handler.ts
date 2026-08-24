@@ -4,15 +4,29 @@ const client = new DynamoDBClient({});
 
 const tableName = process.env.ALERTS_TABLE_NAME!;
 
+<<<<<<< HEAD
+=======
+const corsHeaders = {
+  'Content-Type': 'application/json',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+};
+
+>>>>>>> origin/virasanh
 // GET /alerts
 export const handler = async (event: any) => {
   try {
     if (event.httpMethod !== 'GET') {
       return {
         statusCode: 405,
+<<<<<<< HEAD
         headers: {
           'Content-Type': 'application/json',
         },
+=======
+        headers: corsHeaders,
+>>>>>>> origin/virasanh
         body: JSON.stringify({
           message: 'Method not allowed',
         }),
@@ -41,9 +55,13 @@ export const handler = async (event: any) => {
 
     return {
       statusCode: 200,
+<<<<<<< HEAD
       headers: {
         'Content-Type': 'application/json',
       },
+=======
+      headers: corsHeaders,
+>>>>>>> origin/virasanh
       body: JSON.stringify(alerts),
     };
   } catch (error) {
@@ -51,9 +69,13 @@ export const handler = async (event: any) => {
 
     return {
       statusCode: 500,
+<<<<<<< HEAD
       headers: {
         'Content-Type': 'application/json',
       },
+=======
+      headers: corsHeaders,
+>>>>>>> origin/virasanh
       body: JSON.stringify({
         message: 'Internal server error',
       }),
