@@ -4,7 +4,7 @@ import { loadJson } from "./storage.js";
 export const DEFAULT_API_URL =
   "https://mrfuj9l955.execute-api.ap-southeast-2.amazonaws.com/prod";
 
-// Names used to store GreenLeaf data in the browser.
+// Names used to store browser settings and sample-mode data.
 export const STORAGE_KEYS = {
   apiUrl: "greenleafApiUrl",
   mode: "greenleafDataMode",
@@ -44,7 +44,7 @@ export const DEMO_PRODUCTS = [
   { productId: "P006", name: "Organic Oat Milk", price: 4.8, stock: 0 },
 ];
 
-// Extra sample information that is not currently stored by the AWS backend.
+// Category and reorder defaults for sample products; live thresholds come from AWS.
 export const DEMO_METADATA = {
   P001: { category: "Dairy", reorderLevel: 10 },
   P002: { category: "Bakery", reorderLevel: 10 },

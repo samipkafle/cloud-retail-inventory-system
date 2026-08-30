@@ -13,6 +13,7 @@ import {
   escapeHtml,
   formatMoney,
   formatDateTime,
+  formatFullDateTime,
   formatTime,
   icon,
   initials,
@@ -164,7 +165,7 @@ export function renderActivities() {
       )}</span><div><strong>${escapeHtml(activity.title)}</strong><small>${escapeHtml(
         activity.detail,
       )}</small></div><time datetime="${escapeHtml(activity.createdAt)}">${escapeHtml(
-        formatDateTime(activity.createdAt),
+        formatFullDateTime(activity.createdAt),
       )}</time></div>`;
     })
     .join("");
@@ -341,7 +342,7 @@ export function renderInsights() {
         Math.round(top.daysRemaining),
       )} days.</h2><p>${
         top.sold
-      } units were recorded as sold during the last 14 days. The recommended safety stock is based on that sales pace and the local reorder level.</p><button type="button" data-action="restock" data-id="${escapeHtml(
+      } units were recorded as sold during the last 14 days. The recommended safety stock is based on that sales pace and the product's reorder level.</p><button type="button" data-action="restock" data-id="${escapeHtml(
         top.product.productId,
       )}">Apply ${
         top.suggested || 0
@@ -425,7 +426,7 @@ export function renderReports() {
     .map(
       (activity) =>
         `<div class="audit-row"><time>${escapeHtml(
-          formatTime(activity.createdAt),
+          formatFullDateTime(activity.createdAt),
         )}</time><strong>${escapeHtml(
           activity.user || "GreenLeaf user",
         )}</strong><span>${escapeHtml(activity.title)}</span><small>${escapeHtml(

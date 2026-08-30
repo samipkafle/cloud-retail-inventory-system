@@ -88,6 +88,9 @@ export function showProductModal(productId = null) {
   $("#productForm").reset();
   $("#productStockInput").value = "0";
   $("#productReorderInput").value = "5";
+  $("#productReorderStorageHint").textContent = state.mode === "demo"
+    ? "Sample mode: saved in this browser"
+    : "Saved with this product in AWS";
 
   if (productId) {
     const product = state.products.find((item) => item.productId === productId);
@@ -251,3 +254,4 @@ export function selectRole(role) {
   $("#loginButton span").textContent = `Sign in as ${role}`;
   setFormError("#loginError");
 }
+

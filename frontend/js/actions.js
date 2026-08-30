@@ -1,6 +1,13 @@
 import { state, STORAGE_KEYS } from "./config.js";
 import { saveJson } from "./storage.js";
-import { $, formatMoney, normaliseProduct, downloadCsv } from "./utils.js";
+import {
+  $,
+  formatMoney,
+  normaliseProduct,
+  normaliseSale,
+  normaliseActivity,
+  downloadCsv,
+} from "./utils.js";
 import {
   ensureProductMetadata,
   setMetadata,
@@ -15,6 +22,8 @@ import {
   createProduct,
   updateProduct,
   recordSale,
+  getSales,
+  getActivities,
   deleteProduct,
   friendlyApiError,
   getTelemetrySummary,
@@ -31,7 +40,43 @@ import {
 } from "./ui.js";
 import { renderAll } from "./render.js";
 
-// Loads products from the AWS API or sample-data storage. GET Function
+// Converts shared API sales into the dashboard format and fills old missing snapshots.
+function prepareSales(sales) {
+  return sales
+    .map((rawSale) => {
+      const sale = normaliseSale(rawSale);
+      const product = state.products.find(
+        (item) => item.productId === sale.productId,
+      );
+      const hasUnitPrice = rawSale?.unitPrice !== undefined;
+      const hasTotal = rawSale?.total !== undefined;
+
+      if (!sale.productName) sale.productName = product?.name || sale.productId;
+      if (!hasUnitPrice) sale.unitPrice = product?.price || 0;
+      if (!hasTotal) {
+        sale.total = Number((sale.unitPrice * sale.quantity).toFixed(2));
+      }
+
+      return sale;
+    })
+    .filter((sale) => sale.id && sale.productId && sale.createdAt)
+    .sort((first, second) =>
+      second.createdAt.localeCompare(first.createdAt),
+    );
+}
+
+// Converts shared API activities into newest-first dashboard records.
+function prepareActivities(activities) {
+  return activities
+    .map(normaliseActivity)
+    .filter((activity) => activity.id && activity.title && activity.createdAt)
+    .sort((first, second) =>
+      second.createdAt.localeCompare(first.createdAt),
+    )
+    .slice(0, 100);
+}
+
+// Loads products, shared sales and shared activity from AWS or sample-data storage. GET Function
 export async function loadProducts({ showLoader = true } = {}) {
   if (showLoader) showLoading("Loading inventory…");
   $("#apiErrorPanel").hidden = true;
@@ -65,6 +110,18 @@ export async function loadProducts({ showLoader = true } = {}) {
         state.lastResponseMs,
       );
     }
+
+    const salesResponse = await getSales();
+    if (!Array.isArray(salesResponse)) {
+      throw new Error("GET /sales did not return a transaction list.");
+    }
+    state.sales = prepareSales(salesResponse);
+
+    const activitiesResponse = await getActivities();
+    if (!Array.isArray(activitiesResponse)) {
+      throw new Error("GET /activities did not return an audit list.");
+    }
+    state.activities = prepareActivities(activitiesResponse);
 
     state.lastCheckedAt = new Date().toISOString();
     ensureProductMetadata();
@@ -169,11 +226,11 @@ export async function handleProductSubmit(event) {
         reorderThreshold: reorderLevel,
       });
       setMetadata(state.editingProductId, { category, reorderLevel });
-      addActivity("stock", "Product updated", `${name} (${state.editingProductId})`);
+      await addActivity("stock", "Product updated", `${name} (${state.editingProductId})`);
     } else {
       await createProduct({ productId, name, price, stock, reorderThreshold: reorderLevel });
       setMetadata(productId, { category, reorderLevel });
-      addActivity("stock", "Product added", `${name} (${productId})`);
+      await addActivity("stock", "Product added", `${name} (${productId})`);
     }
 
     closeModal("productModal");
@@ -187,7 +244,7 @@ export async function handleProductSubmit(event) {
   }
 }
 
-// Validates a sale, reduces stock and records the transaction locally. PUT Function
+// Validates a sale and records it through the shared sales API. POST Function
 export async function handleSaleSubmit(event) {
   event.preventDefault();
   setFormError("#saleFormError");
@@ -226,10 +283,12 @@ export async function handleSaleSubmit(event) {
       createdAt: new Date().toISOString(),
     };
 
-    state.sales.unshift(sale);
-    state.sales = state.sales.slice(0, 500);
-    saveJson(STORAGE_KEYS.sales, state.sales);
-    addActivity(
+    if (state.mode === "demo") {
+      state.sales.unshift(sale);
+      state.sales = state.sales.slice(0, 500);
+      saveJson(STORAGE_KEYS.sales, state.sales);
+    }
+    await addActivity(
       "sale",
       "Sale recorded",
       `${quantity} × ${product.name} · ${formatMoney(sale.total)}`,
@@ -240,7 +299,7 @@ export async function handleSaleSubmit(event) {
     else renderAll();
     showToast(
       result.alertRaised
-        ? `Sale recorded. ${result.remainingStock} units remain. Low-stock alert sent.`
+        ? `Sale recorded. ${result.remainingStock} units remain. Low-stock alert triggered.`
         : `Sale recorded. ${result.remainingStock} units remain.`,
     );
   } catch (error) {
@@ -262,7 +321,12 @@ export async function handleConfirmDelete() {
     await deleteProduct(productId);
     delete state.metadata[productId];
     saveJson(STORAGE_KEYS.metadata, state.metadata);
-    addActivity("alert", "Product deleted", `${product.name} (${productId})`, "Attention");
+    await addActivity(
+      "alert",
+      "Product deleted",
+      `${product.name} (${productId})`,
+      "Attention",
+    );
     closeModal("confirmModal");
 
     if (state.mode === "api") await loadProducts({ showLoader: false });
@@ -295,7 +359,11 @@ export async function restockProduct(productId) {
 
   try {
     await updateProduct(productId, { stock: target });
-    addActivity("stock", "Restock applied", `${product.name} · +${unitsAdded} units`);
+    await addActivity(
+      "stock",
+      "Restock applied",
+      `${product.name} · +${unitsAdded} units`,
+    );
 
     if (state.mode === "api") await loadProducts({ showLoader: false });
     else renderAll();
@@ -336,7 +404,7 @@ export function exportInventory() {
   showToast("Inventory CSV downloaded.");
 }
 
-// Exports locally recorded sales as a CSV report.
+// Exports the currently loaded shared sales as a CSV report.
 export function exportSales() {
   downloadCsv(
     `greenleaf-sales-${new Date().toISOString().slice(0, 10)}.csv`,

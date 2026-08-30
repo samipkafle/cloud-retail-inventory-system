@@ -47,6 +47,20 @@ export function formatTime(value) {
   }).format(date);
 }
 
+// Formats an audit timestamp with day, month, year and local time.
+export function formatFullDateTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Unknown date";
+
+  return new Intl.DateTimeFormat("en-AU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
 // Creates the HTML for an SVG icon.
 export function icon(name) {
   return `<svg aria-hidden="true"><use href="#icon-${name}"></use></svg>`;
@@ -76,11 +90,51 @@ export function inferCategory(name) {
 
 // Converts API product data into a consistent and safe product structure.
 export function normaliseProduct(product) {
+  const reorderThreshold = Number(product?.reorderThreshold ?? 0);
+
   return {
     productId: String(product?.productId ?? "").trim(),
     name: String(product?.name ?? "Unnamed product").trim(),
     price: Math.max(0, Number(product?.price) || 0),
     stock: Math.max(0, Math.floor(Number(product?.stock) || 0)),
+    // Keep the AWS field; zero also matches the backend's missing-field default.
+    reorderThreshold: Number.isFinite(reorderThreshold)
+      ? Math.max(0, Math.floor(reorderThreshold))
+      : 0,
+  };
+}
+
+// Converts API sale data into the structure used by the dashboard.
+export function normaliseSale(sale) {
+  const quantity = Math.max(
+    0,
+    Math.floor(Number(sale?.quantity ?? sale?.quantitySold) || 0),
+  );
+  const unitPrice = Math.max(0, Number(sale?.unitPrice) || 0);
+
+  return {
+    id: String(sale?.id ?? sale?.saleId ?? "").trim(),
+    productId: String(sale?.productId ?? "").trim(),
+    productName: String(sale?.productName ?? "").trim(),
+    quantity,
+    unitPrice,
+    total: Math.max(0, Number(sale?.total) || unitPrice * quantity),
+    createdAt: String(sale?.createdAt ?? sale?.soldAt ?? "").trim(),
+  };
+}
+
+// Converts API activity data into the structure used by the audit views.
+export function normaliseActivity(activity) {
+  return {
+    id: String(activity?.id ?? activity?.activityId ?? "").trim(),
+    type: ["sale", "stock", "alert"].includes(activity?.type)
+      ? activity.type
+      : "stock",
+    title: String(activity?.title ?? "Activity recorded").trim(),
+    detail: String(activity?.detail ?? "").trim(),
+    status: activity?.status === "Attention" ? "Attention" : "Completed",
+    user: String(activity?.user ?? "GreenLeaf user").trim(),
+    createdAt: String(activity?.createdAt ?? "").trim(),
   };
 }
 

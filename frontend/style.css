@@ -2081,7 +2081,7 @@ td {
 
 .audit-row {
   display: grid;
-  grid-template-columns: 65px 120px 1fr 1.4fr 70px;
+  grid-template-columns: 130px 120px 1fr 1.4fr 70px;
   gap: 15px;
   align-items: center;
   padding: 11px 0;
@@ -2578,7 +2578,7 @@ td {
   }
 
   .audit-row {
-    grid-template-columns: 48px 1fr 70px;
+    grid-template-columns: 115px 1fr 70px;
   }
 
   .audit-row span,

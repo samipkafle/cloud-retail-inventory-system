@@ -73,6 +73,20 @@ export class CdkStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
+    // DynamoDB Activity Table stores the shared audit history.
+    const activitiesTable = new dynamodb.Table(this, 'ActivitiesTable', {
+      tableName: 'RetailActivities',
+
+      partitionKey: {
+        name: 'activityId',
+        type: dynamodb.AttributeType.STRING,
+      },
+
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
     // SNS Topic for low-stock notifications
     const lowStockTopic = new sns.Topic(this, 'LowStockTopic', {
       topicName: 'RetailLowStockAlerts',
@@ -179,9 +193,18 @@ export class CdkStack extends cdk.Stack {
     // Sales Lambda needs to read/decrement product stock, write sales, and
     // write alerts when a sale pushes stock at or below the reorder threshold
     inventoryTable.grantReadWriteData(salesLambda);
-    salesTable.grantWriteData(salesLambda);
+    salesTable.grantReadWriteData(salesLambda);
     alertsTable.grantWriteData(salesLambda);
     lowStockTopic.grantPublish(salesLambda);
+
+    // DynamoDB table grants do not include transaction APIs, so allow this
+    // Lambda to atomically update inventory and insert the matching sale.
+    salesLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['dynamodb:TransactWriteItems'],
+        resources: [inventoryTable.tableArn, salesTable.tableArn],
+      })
+    );
 
     // Alerts Lambda Function
     const alertsLambda = new lambdaNodejs.NodejsFunction(this, 'AlertsLambda', {
@@ -201,6 +224,29 @@ export class CdkStack extends cdk.Stack {
     });
 
     alertsTable.grantReadData(alertsLambda);
+
+    // Activity Lambda Function
+    const activityLambda = new lambdaNodejs.NodejsFunction(
+      this,
+      'ActivityLambda',
+      {
+        runtime: lambda.Runtime.NODEJS_24_X,
+
+        entry: 'lambda/activity-handler.ts',
+
+        handler: 'handler',
+
+        bundling: {
+          forceDockerBundling: false,
+        },
+
+        environment: {
+          ACTIVITIES_TABLE_NAME: activitiesTable.tableName,
+        },
+      }
+    );
+
+    activitiesTable.grantReadWriteData(activityLambda);
 
     // Inventory Status Lambda Function
     const inventoryStatusLambda = new lambdaNodejs.NodejsFunction(
@@ -371,6 +417,13 @@ export class CdkStack extends cdk.Stack {
       authOptions
     );
 
+    // GET /sales
+    sales.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(salesLambda),
+      authOptions
+    );
+
     // /alerts
     const alerts = api.root.addResource('alerts');
 
@@ -378,6 +431,23 @@ export class CdkStack extends cdk.Stack {
     alerts.addMethod(
       'GET',
       new apigateway.LambdaIntegration(alertsLambda),
+      authOptions
+    );
+
+    // /activities
+    const activities = api.root.addResource('activities');
+
+    // GET /activities
+    activities.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(activityLambda),
+      authOptions
+    );
+
+    // POST /activities
+    activities.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(activityLambda),
       authOptions
     );
 

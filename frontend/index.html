@@ -181,7 +181,7 @@
         <div class="sidebar-info">
           <span><svg><use href="#icon-spark"></use></svg> Smart forecast</span>
           <strong>14-day planning</strong>
-          <p>Recommendations use sales recorded through this browser.</p>
+          <p>Recommendations use shared sales recorded through AWS.</p>
         </div>
         <div class="sidebar-footer">
           <span class="aws-mark">aws</span>
@@ -249,7 +249,7 @@
 
             <div class="metric-grid">
               <article class="metric-card">
-                <div><span>Recorded revenue</span><strong id="revenueMetric">$0.00</strong><small>Sales saved in this browser</small></div>
+                <div><span>Recorded revenue</span><strong id="revenueMetric">$0.00</strong><small>Sales saved in AWS DynamoDB</small></div>
                 <span class="metric-icon green"><svg><use href="#icon-chart"></use></svg></span>
               </article>
               <article class="metric-card">
@@ -270,7 +270,7 @@
               <article class="content-card sales-performance">
                 <div class="card-head">
                   <div><span class="section-kicker">Sales performance</span><h2>Revenue this week</h2></div>
-                  <span class="prototype-tag">Browser records</span>
+                  <span class="prototype-tag">Shared AWS sales</span>
                 </div>
                 <div class="chart-summary">
                   <strong id="weekRevenue">$0.00</strong><span id="weekSaleCount">0 recorded sales</span>
@@ -363,8 +363,8 @@
               <button class="primary-button open-sale-button" type="button"><svg><use href="#icon-plus"></use></svg>Record sale</button>
             </div>
             <div class="metric-grid">
-              <article class="metric-card"><div><span>Revenue recorded</span><strong id="salesRevenueMetric">$0.00</strong><small>This browser</small></div><span class="metric-icon green"><svg><use href="#icon-chart"></use></svg></span></article>
-              <article class="metric-card"><div><span>Transactions</span><strong id="transactionMetric">0</strong><small>Local sales history</small></div><span class="metric-icon blue"><svg><use href="#icon-receipt"></use></svg></span></article>
+              <article class="metric-card"><div><span>Revenue recorded</span><strong id="salesRevenueMetric">$0.00</strong><small>Shared AWS history</small></div><span class="metric-icon green"><svg><use href="#icon-chart"></use></svg></span></article>
+              <article class="metric-card"><div><span>Transactions</span><strong id="transactionMetric">0</strong><small>Shared sales history</small></div><span class="metric-icon blue"><svg><use href="#icon-receipt"></use></svg></span></article>
               <article class="metric-card"><div><span>Items sold</span><strong id="salesItemsMetric">0</strong><small>Automatic stock deduction</small></div><span class="metric-icon violet"><svg><use href="#icon-box"></use></svg></span></article>
               <article class="metric-card"><div><span>Average sale</span><strong id="averageSaleMetric">$0.00</strong><small>Recorded transactions</small></div><span class="metric-icon amber"><svg><use href="#icon-spark"></use></svg></span></article>
             </div>
@@ -378,7 +378,7 @@
                 <div id="transactionList" class="transaction-list"></div>
               </article>
             </div>
-            <p class="integration-note"><strong>Backend note:</strong> sales are recorded through the AWS <code>/sales</code> endpoint, which updates DynamoDB stock and raises low-stock alerts. Transaction history for the charts above still lives in this browser only.</p>
+            <p class="integration-note"><strong>Backend note:</strong> sales are recorded and loaded through the AWS <code>/sales</code> endpoint, which updates DynamoDB stock, stores shared transaction history and raises low-stock alerts.</p>
           </section>
 
           <section id="alertsPage" class="page" data-page="alerts">
@@ -401,7 +401,7 @@
 
           <section id="insightsPage" class="page" data-page="insights">
             <div class="page-heading">
-              <div><p>Decision support</p><h1>Demand insights</h1><span>Recommendations use stock and browser-recorded sales from the last 14 days.</span></div>
+              <div><p>Decision support</p><h1>Demand insights</h1><span>Recommendations use stock and shared AWS sales from the last 14 days.</span></div>
               <span class="model-badge"><svg><use href="#icon-spark"></use></svg>14-day forecast</span>
             </div>
             <section id="insightHero" class="insight-hero"></section>
@@ -431,12 +431,12 @@
               <article class="content-card report-list">
                 <div class="card-head"><div><span class="section-kicker">Download centre</span><h2>Available reports</h2></div></div>
                 <button id="downloadProductsReport" type="button"><span class="report-doc"><svg><use href="#icon-box"></use></svg></span><span><strong>Inventory status report</strong><small>Live product data</small></span><svg><use href="#icon-download"></use></svg></button>
-                <button id="downloadSalesReport" type="button"><span class="report-doc"><svg><use href="#icon-receipt"></use></svg></span><span><strong>Recorded sales report</strong><small>Browser transaction history</small></span><svg><use href="#icon-download"></use></svg></button>
+                <button id="downloadSalesReport" type="button"><span class="report-doc"><svg><use href="#icon-receipt"></use></svg></span><span><strong>Recorded sales report</strong><small>Shared AWS transaction history</small></span><svg><use href="#icon-download"></use></svg></button>
                 <button id="printInsightReport" type="button"><span class="report-doc"><svg><use href="#icon-spark"></use></svg></span><span><strong>Demand insight summary</strong><small>Print-friendly view</small></span><svg><use href="#icon-download"></use></svg></button>
               </article>
             </div>
             <article class="content-card audit-panel">
-              <div class="card-head"><div><span class="section-kicker">Control and traceability</span><h2>Recent audit log</h2></div><span class="prototype-tag">Browser records</span></div>
+              <div class="card-head"><div><span class="section-kicker">Control and traceability</span><h2>Recent audit log</h2></div><span class="prototype-tag">Shared AWS records</span></div>
               <div id="auditRows" class="audit-rows"></div>
             </article>
           </section>
@@ -493,7 +493,7 @@
           </div>
           <div class="form-row local-fields">
             <label>Category <small>Saved in this browser</small><select id="productCategoryInput" name="category"><option>Dairy</option><option>Bakery</option><option>Produce</option><option>Pantry</option><option>Beverages</option><option>Household</option><option>Other</option></select></label>
-            <label>Reorder level <small>Saved in this browser</small><input id="productReorderInput" name="reorderLevel" type="number" min="0" step="1" value="5" required /></label>
+            <label>Reorder level <small id="productReorderStorageHint">Saved with this product in AWS</small><input id="productReorderInput" name="reorderLevel" type="number" min="0" step="1" value="5" required /></label>
           </div>
           <p id="productFormError" class="form-error" hidden></p>
           <div class="modal-actions"><button class="secondary-button modal-close-button" type="button" data-close-modal="productModal">Cancel</button><button id="saveProductButton" class="primary-button" type="submit">Add product</button></div>

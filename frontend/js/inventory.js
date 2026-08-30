@@ -1,40 +1,64 @@
 import { state, STORAGE_KEYS, DEMO_METADATA } from "./config.js";
 import { saveJson } from "./storage.js";
-import { inferCategory } from "./utils.js";
+import { inferCategory, normaliseActivity } from "./utils.js";
+import { recordActivity } from "./api.js";
 
-// Gets a product's locally stored category and reorder level.
+// Gets the local category and the AWS reorder threshold (local only in sample mode).
 export function getMetadata(productId, productName = "") {
   const stored = state.metadata[productId];
+  const product = state.products.find((item) => item.productId === productId);
+  // Never let an old browser value override an AWS product, including zero.
+  const reorderLevel = state.mode === "demo"
+    ? stored?.reorderLevel ?? DEMO_METADATA[productId]?.reorderLevel ?? 5
+    : product?.reorderThreshold ?? 0;
 
-  if (stored) {
-    return {
-      category: stored.category || inferCategory(productName),
-      reorderLevel: Math.max(0, Number(stored.reorderLevel) || 0),
-    };
-  }
-
-  return { category: inferCategory(productName), reorderLevel: 5 };
+  return {
+    category: stored?.category || inferCategory(productName),
+    reorderLevel: Math.max(0, Number(reorderLevel) || 0),
+  };
 }
 
-// Saves a product's category and reorder level in browser storage.
+// Saves the category locally; only sample-mode reorder levels are written here.
 export function setMetadata(productId, metadata) {
   state.metadata[productId] = {
+    // Preserve legacy local data, but getMetadata ignores its threshold in API mode.
+    ...state.metadata[productId],
     category: metadata.category || "Other",
-    reorderLevel: Math.max(0, Number(metadata.reorderLevel) || 0),
   };
+
+  if (state.mode === "demo") {
+    state.metadata[productId].reorderLevel = Math.max(
+      0,
+      Number(metadata.reorderLevel) || 0,
+    );
+  }
+
   saveJson(STORAGE_KEYS.metadata, state.metadata);
 }
 
-// Creates default metadata for products that do not already have it.
+// Creates local category defaults, adding reorder defaults only for sample mode.
 export function ensureProductMetadata() {
   let changed = false;
 
   state.products.forEach((product) => {
+    const demoDefaults = state.mode === "demo"
+      ? DEMO_METADATA[product.productId]
+      : undefined;
+
     if (!state.metadata[product.productId]) {
-      state.metadata[product.productId] = DEMO_METADATA[product.productId] || {
-        category: inferCategory(product.name),
-        reorderLevel: 5,
+      state.metadata[product.productId] = {
+        category: demoDefaults?.category || inferCategory(product.name),
       };
+      changed = true;
+    }
+
+    // A live category entry may already exist when switching to sample mode.
+    if (
+      state.mode === "demo" &&
+      state.metadata[product.productId].reorderLevel === undefined
+    ) {
+      state.metadata[product.productId].reorderLevel =
+        demoDefaults?.reorderLevel ?? 5;
       changed = true;
     }
   });
@@ -124,9 +148,9 @@ export function inventoryTotals() {
   return totals;
 }
 
-// Adds a product or sales action to the activity history.
-export function addActivity(type, title, detail, status = "Completed") {
-  state.activities.unshift({
+// Adds an action to shared AWS history or browser storage in sample mode.
+export async function addActivity(type, title, detail, status = "Completed") {
+  const activity = {
     id: `ACT-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`,
     type,
     title,
@@ -134,10 +158,27 @@ export function addActivity(type, title, detail, status = "Completed") {
     status,
     user: state.user.name,
     createdAt: new Date().toISOString(),
-  });
+  };
 
+  if (state.mode === "api") {
+    try {
+      const response = await recordActivity(activity);
+      const sharedActivity = normaliseActivity(response?.activity || activity);
+      state.activities = [
+        sharedActivity,
+        ...state.activities.filter((item) => item.id !== sharedActivity.id),
+      ].slice(0, 100);
+      return true;
+    } catch (error) {
+      console.error("Unable to share audit activity:", error);
+      return false;
+    }
+  }
+
+  state.activities.unshift(activity);
   state.activities = state.activities.slice(0, 100);
   saveJson(STORAGE_KEYS.activity, state.activities);
+  return true;
 }
 
 // Calculates sales velocity and suggested restock quantities.

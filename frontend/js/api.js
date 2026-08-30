@@ -119,6 +119,32 @@ export function saveDemoProducts() {
   saveJson(STORAGE_KEYS.demoProducts, state.products);
 }
 
+// Loads sales from the shared AWS API or browser storage in sample mode.
+export function getSales() {
+  if (state.mode === "demo") {
+    const sales = loadJson(STORAGE_KEYS.sales, []);
+    return Array.isArray(sales) ? sales : [];
+  }
+
+  return apiRequest("/sales");
+}
+
+// Loads shared audit history from AWS or local activity in sample mode.
+export function getActivities(limit = 100) {
+  if (state.mode === "demo") {
+    const activities = loadJson(STORAGE_KEYS.activity, []);
+    return Array.isArray(activities) ? activities : [];
+  }
+
+  return apiRequest(`/activities?limit=${limit}`);
+}
+
+// Records an audit entry through AWS, leaving sample-mode storage to inventory.js.
+export function recordActivity(activity) {
+  if (state.mode === "demo") return { activity };
+  return apiRequest("/activities", { method: "POST", body: activity });
+}
+
 // Adds a new product through the API or sample-data storage.
 export async function createProduct(product) {
   if (state.mode === "demo") {
