@@ -20,34 +20,36 @@ The project demonstrates cloud engineering practices using AWS serverless servic
 
 ### Implemented
 
-* User authentication (Amazon Cognito) required on every API route
-* Role-based access — a `manager` group is required to create, update or delete products; staff can record sales and view inventory/alerts
+* User authentication (Amazon Cognito) with role-based access — a `manager` group is required to create, update or delete products; staff can record sales and view inventory/alerts (currently disabled at the API Gateway layer for testing; see [Authentication](#authentication))
 * Product creation, retrieval, update and deletion (full CRUD)
-* Record daily sales, with inventory automatically updated on each valid sale
+* Record and list daily sales, with inventory automatically updated on each valid sale
 * Reject sales that would exceed available stock
 * Current stock and low-stock status for every product (`GET /inventory`)
 * Automated low-stock alert history, stored and retrievable via the API
 * Automated low-stock email notifications via Amazon SNS
+* Shared activity/audit log across the app (`/activities`)
+* Frontend health/error telemetry, recorded as CloudWatch custom metrics and queryable via the API, with a CloudWatch alarm on repeated frontend errors
+* Web frontend (HTML/CSS/vanilla JS) covering login, dashboard, product, sales and alert workflows, deployed to an S3 static website bucket by CDK
 * REST API using API Gateway
 * Serverless backend using AWS Lambda
-* Inventory, sales and alert data storage using DynamoDB
+* Inventory, sales, alert and activity data storage using DynamoDB
 * Infrastructure deployment using AWS CDK
 * CloudWatch logging
 
 ### Planned
 
+* Restore the Cognito authorizer on all API routes ahead of demo/submission
 * Sales reporting and CSV export to S3
 * Smart restocking forecast based on 14-day sales velocity
 * AI-powered demand recommendation engine (Python/scikit-learn)
 * Dashboard charts for sales, category share and product trends
-* React frontend user interface
 
 ## System Architecture
 
 The current system uses the following serverless architecture:
 
 ```text
-User / Postman
+Web Frontend (S3) / Postman
       ↓
 API Gateway
       ↓
@@ -76,16 +78,18 @@ Email Notification
 | ----------- | --------------------------------------------- |
 | AWS Lambda  | Backend processing and business logic         |
 | API Gateway | REST API management                           |
-| DynamoDB    | Store product, inventory, sales and alert data |
-| Amazon S3   | Store application files and deployment assets |
+| DynamoDB    | Store product, inventory, sales, alert and activity data |
+| Amazon Cognito | User authentication and role-based access  |
+| Amazon S3   | Static frontend website hosting               |
 | IAM         | Access control and security                   |
-| CloudWatch  | Monitoring, logging, and alarms               |
-| SNS         | Low-stock email notifications                 |
+| CloudWatch  | Monitoring, logging, custom metrics and alarms |
+| SNS         | Low-stock and frontend-error email notifications |
 | AWS CDK     | Infrastructure-as-Code deployment             |
 
 ## Technologies
 
-* TypeScript / Node.js (current backend implementation)
+* TypeScript / Node.js (backend Lambda functions and CDK)
+* HTML / CSS / JavaScript (frontend)
 * Python (planned, for the demand recommendation engine)
 * AWS Cloud Services
 * AWS CDK
@@ -107,8 +111,14 @@ The current API supports the following operations:
 | PUT    | `/products/{productId}`  | Update a product                     |
 | DELETE | `/products/{productId}`  | Delete a product                     |
 | POST   | `/sales`                 | Record a sale (updates stock, rejects oversell, raises alert if low) |
+| GET    | `/sales`                 | Retrieve sales history               |
 | GET    | `/inventory`             | Retrieve current stock and low-stock status for every product |
 | GET    | `/alerts`                | Retrieve low-stock alert history     |
+| GET    | `/activities`            | Retrieve the shared activity/audit log |
+| POST   | `/activities`            | Record an activity/audit log entry   |
+| POST   | `/telemetry`             | Record a frontend health/error event as a CloudWatch metric |
+| GET    | `/telemetry`             | Retrieve an aggregated telemetry summary (`?minutes=60`) |
+| GET    | `/telemetry/events`      | Retrieve recent raw telemetry events (`?limit=50`) |
 
 ### Example Product
 
@@ -139,7 +149,9 @@ https://mrfuj9l955.execute-api.ap-southeast-2.amazonaws.com/prod
 
 ### Authentication
 
-Every endpoint requires a valid Cognito ID token in the `Authorization` header. Accounts are provisioned by an admin/manager (no public self-signup). Members of the `manager` Cognito group can create, update and delete products; authenticated users outside that group (staff) can record sales and view inventory/alerts but cannot manage the product catalogue.
+The design requires a valid Cognito ID token in the `Authorization` header on every endpoint. Accounts are provisioned by an admin/manager (no public self-signup). Members of the `manager` Cognito group can create, update and delete products; authenticated users outside that group (staff) can record sales and view inventory/alerts but cannot manage the product catalogue.
+
+> **Note:** the Cognito authorizer is currently disabled on the API Gateway routes (`AuthorizationType.NONE`) to simplify manual testing while the frontend is being built out. The user pool, client and `manager` group are already provisioned by CDK — re-enabling the authorizer is a small config change in `cdk-stack.ts` and is planned before demo/submission.
 
 ## Infrastructure
 
@@ -147,11 +159,13 @@ AWS infrastructure is deployed using AWS CDK.
 
 Current infrastructure includes:
 
-* Cognito User Pool with a `manager` group for authentication and role-based access
-* DynamoDB tables (products, sales, alerts)
-* Lambda functions (products, sales, alerts, inventory status)
-* API Gateway REST API with a Cognito authorizer on every route
-* SNS topic with email subscription for low-stock notifications
+* Cognito User Pool with a `manager` group for authentication and role-based access (provisioned, see [Authentication](#authentication) for current API Gateway status)
+* DynamoDB tables (products/inventory, sales, alerts, activities), with a GSI on the sales table for chronological per-product queries
+* Lambda functions (products/inventory CRUD, sales, alerts, activities, inventory status, telemetry)
+* API Gateway REST API
+* SNS topic with email subscription for low-stock and frontend-error notifications
+* CloudWatch alarm on repeated frontend errors, fed by the telemetry Lambda's custom metrics
+* S3 bucket hosting the static frontend as a public website, deployed automatically from `frontend/` by CDK
 * IAM roles and permissions
 * CloudWatch logging
 
@@ -202,7 +216,7 @@ Documentation includes:
 
 ## Project Status
 
-**Current Phase: Backend Development and API Testing**
+**Current Phase: Backend and Frontend Development, API Testing**
 
 ### Completed
 
@@ -210,21 +224,25 @@ Documentation includes:
 * [x] AWS account configuration
 * [x] AWS CLI setup
 * [x] AWS CDK setup
-* [x] DynamoDB database (products, sales, alerts)
+* [x] DynamoDB database (products, sales, alerts, activities)
 * [x] AWS Lambda backend
 * [x] API Gateway
-* [x] Cognito authentication and role-based access
+* [x] Cognito user pool, client and `manager` group provisioned
 * [x] Product CRUD API
-* [x] Sales recording API with automatic inventory update
+* [x] Sales recording and history API with automatic inventory update
 * [x] Inventory/stock overview endpoint with low-stock status
 * [x] Low-stock alert history API
+* [x] Activity/audit log API
 * [x] SNS email notifications for low-stock alerts
+* [x] Frontend telemetry API and CloudWatch error alarm
+* [x] Web frontend (login, dashboard, products, sales, alerts) deployed to S3
 * [x] API testing using Postman
 * [x] CloudWatch Lambda logging
 * [x] CDK deployment
 
 ### In Progress
 
+* [ ] Re-enable the Cognito authorizer on all API Gateway routes
 * [ ] CloudWatch dashboard
 * [ ] Sales reporting and CSV export
 
@@ -233,7 +251,6 @@ Documentation includes:
 * [ ] Smart restocking forecast (14-day sales velocity)
 * [ ] AI demand recommendation engine
 * [ ] Reporting and insights dashboard
-* [ ] Frontend/user interface
 * [ ] Automated testing
 * [ ] User Acceptance Testing
 * [ ] Final documentation
@@ -251,4 +268,4 @@ The source code and project documentation are maintained using GitHub.
 **Project:** Cloud-Based Retail Inventory and Sales Monitoring System
 **Architecture:** AWS Serverless
 **Development Approach:** Agile
-**Current Stage:** Backend Development and API Testing
+**Current Stage:** Backend and Frontend Development, API Testing
