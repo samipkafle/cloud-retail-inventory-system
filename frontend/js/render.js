@@ -178,8 +178,7 @@ export function renderInventory() {
   $("#totalUnitCount").textContent = totals.units.toLocaleString("en-AU");
   $("#inventoryLowCount").textContent = totals.low;
   $("#inventoryOutCount").textContent = totals.out;
-  $("#tableSourceLabel").textContent =
-    state.mode === "demo" ? "Sample data in this browser" : "AWS product API";
+  $("#tableSourceLabel").textContent = "AWS product API";
 
   const query = $("#productSearch").value.trim().toLowerCase();
   const filter = $("#stockFilter").value;
@@ -411,7 +410,7 @@ export function renderReports() {
     ? `${totals.units.toLocaleString("en-AU")} units are on hand, with ${
         totals.low + totals.out
       } product${totals.low + totals.out === 1 ? "" : "s"} requiring attention.`
-    : "Connect the AWS API or use sample data to calculate current stock performance.";
+    : "Connect the AWS API to calculate current stock performance.";
 
   const audit = $("#auditRows");
   if (!state.activities.length) {
@@ -442,7 +441,6 @@ export function renderReports() {
 export function renderMonitoring() {
   const statusMap = {
     connected: ["Healthy", "AWS product endpoint connected"],
-    demo: ["Demo mode", "Using browser sample products"],
     error: ["Unavailable", "Check API URL and CORS"],
     checking: ["Checking", "GET /products in progress"],
   };
@@ -453,9 +451,7 @@ export function renderMonitoring() {
   $("#monitorResponseTime").textContent =
     state.lastResponseMs === null
       ? "—"
-      : state.mode === "demo"
-        ? "Local"
-        : `${state.lastResponseMs} ms`;
+      : `${state.lastResponseMs} ms`;
   $("#monitorProductCount").textContent = state.products.length;
   $("#monitorLastCheck").textContent = state.lastCheckedAt
     ? formatTime(state.lastCheckedAt)
@@ -477,9 +473,7 @@ export function renderMonitoring() {
           }</b><span>${escapeHtml(event.message)}</span><small>${
             event.duration === null
               ? "—"
-              : event.duration === 0
-                ? "Local"
-                : `${event.duration} ms`
+              : `${event.duration} ms`
           }</small></div>`,
       )
       .join("");

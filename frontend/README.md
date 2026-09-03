@@ -9,6 +9,10 @@ It supports current backend API:
 - `GET /products/{productId}`
 - `PUT /products/{productId}`
 - `DELETE /products/{productId}`
+- `GET /sales`
+- `POST /sales`
+- `GET /activities`
+- `POST /activities`
 
 ## Folder Structure
 
@@ -22,7 +26,6 @@ frontend/
       app.js
       config.js
       actions.js
-      storage.js
       utils.js
       api.js
       inventory.js
@@ -52,13 +55,11 @@ frontend/
 
 - js/actions.js Handles major user actions and coordinates the other files. Adding, editing, deleting or restocking a product; recording a sale; exporting CSV files.
 
-- js/config.js Stores shared settings and the current application state. AWS API URL, selected role, product list, sample products and current page.
-
-- js/storage.js Safely reads and writes data using browser local storage. Saving sales history so it remains after refreshing the browser.
+- js/config.js Stores the default AWS API URL and temporary in-memory application state.
 
 - js/utils.js Contains small reusable helper functions used by multiple files. Formatting $15.50, escaping HTML, creating icons or downloading a CSV file.
 
-- js/api.js Sends product requests to API Gateway or manages products in sample-data mode. Calling GET /products, POST /products, PUT /products/ID or DELETE /products/ID.
+- js/api.js Sends product, sales and activity requests to API Gateway.
 - js/inventory.js Performs inventory and sales calculations. Calculating inventory value, stock status, sales totals and suggested restock quantities.
 
 - js/ui.js Controls interactive interface elements that are not responsible for displaying complete pages. Opening modals, showing loading screens, displaying notifications and changing roles.
@@ -67,16 +68,32 @@ frontend/
 
 ## How To Run It
 
-Simple way:
+### AWS-only product data
 
-1. Open the `frontend` folder in VS Code.
-2. Open `index.html`.
-3. Right click inside the file.
-4. Choose `Open with Live Server`.
+The frontend uses each product's `category` and `reorderThreshold` returned by
+`GET /products`. The product table, low-stock badges, forecast, restock actions,
+edit form and inventory CSV all read those AWS-backed fields. Creating or editing
+a product sends both fields to DynamoDB through the product API.
 
-If you do not have Live Server:
+The frontend does not use browser local storage or provide a sample-data mode.
+The configured API address and prototype login exist only in memory and reset
+when the page is refreshed. Products, sales and audit activities are reloaded
+from AWS.
 
-1. Open `frontend/index.html`.
-2. Double click the file.
-3. It will open in your browser.
+### Shared audit history
+
+Product, sale, deletion and restock actions are written to the
+`RetailActivities` DynamoDB table through `POST /activities`. Every device loads
+the newest shared entries through `GET /activities`. The audit log shows the
+day, month, year and local display time. Existing activity that was saved only
+in a browser is not migrated automatically.
+
+Refresh each device to load changes made elsewhere. There is no background
+real-time synchronization. The forecast formula and its existing time window
+are unchanged.
+
+
+### Start the frontend
+
+http://cdkstack-frontendbucketefe2e19c-en3qvtbjhicm.s3-website-ap-southeast-2.amazonaws.com/
 

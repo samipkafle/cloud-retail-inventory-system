@@ -91,10 +91,12 @@ export function inferCategory(name) {
 // Converts API product data into a consistent and safe product structure.
 export function normaliseProduct(product) {
   const reorderThreshold = Number(product?.reorderThreshold ?? 0);
+  const name = String(product?.name ?? "Unnamed product").trim();
 
   return {
     productId: String(product?.productId ?? "").trim(),
-    name: String(product?.name ?? "Unnamed product").trim(),
+    name,
+    category: String(product?.category ?? "").trim() || inferCategory(name),
     price: Math.max(0, Number(product?.price) || 0),
     stock: Math.max(0, Math.floor(Number(product?.stock) || 0)),
     // Keep the AWS field; zero also matches the backend's missing-field default.
