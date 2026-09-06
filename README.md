@@ -33,19 +33,17 @@ The project also demonstrates cloud engineering practices using AWS serverless s
 - Inventory and sales CSV exports
 - CloudWatch-based application monitoring
 - Responsive interface for desktop and mobile devices
+- Real Amazon Cognito sign-in with manager/staff role-based access control
 
 ### Planned
 
-- Restore/enable the Cognito authorizer on all API routes ahead of demo/submission
 - AI-powered demand recommendation engine (Python/scikit-learn) to replace the current rule-based forecast
 
 ## Current Authentication Status
 
-The AWS CDK stack creates an Amazon Cognito User Pool, an application client and a `manager` group. However, Cognito protection is currently disabled on the API routes while the real sign-in flow is being completed.
+The frontend signs in against a real Amazon Cognito User Pool (`amazon-cognito-identity-js`, SRP flow) and attaches the ID token to every API request. The API Gateway Cognito authorizer is enabled on every route, so unauthenticated requests are rejected. Members of the `manager` Cognito group can create, update and delete products; everyone else authenticated (staff) can record sales and view inventory/alerts but not manage the product catalogue.
 
-The current frontend login is a prototype role selector. It demonstrates the different manager, staff and maintainer interfaces, but it is not yet secure authentication. Before production use, the frontend must sign in through Cognito, attach the returned token to API requests, and the API Gateway Cognito authorizer and backend manager checks must be enabled.
-
-Public self-sign-up is disabled by design. Staff accounts are intended to be created by a manager or administrator.
+Public self-sign-up is disabled by design — staff accounts are created by a manager or administrator (`admin-create-user`).
 
 ## System Architecture
 
@@ -94,7 +92,7 @@ Email Notification
 | DynamoDB | Stores products, sales, activities and low-stock alerts |
 | Amazon SNS | Sends low-stock email notifications |
 | Amazon CloudWatch | Stores logs and frontend monitoring information |
-| Amazon Cognito | Creates the user directory and planned role-based authentication |
+| Amazon Cognito | User directory and enforced manager/staff role-based authentication |
 | AWS IAM | Controls permissions between AWS services |
 | AWS CDK | Defines and deploys the AWS infrastructure as code |
 
@@ -128,7 +126,7 @@ Email Notification
 | `frontend/js/config.js` | Contains application configuration and temporary runtime state |
 | `frontend/js/inventory.js` | Calculates stock status, sales totals and demand forecasts |
 | `frontend/js/render.js` | Renders dashboard pages, tables, charts, reports and demand insights |
-| `frontend/js/ui.js` | Controls modals, messages, navigation, loading states and prototype roles |
+| `frontend/js/ui.js` | Controls modals, messages, navigation, loading states and role-based visibility |
 | `frontend/js/utils.js` | Contains reusable formatting, validation, HTML and CSV helpers |
 
 Persistent business information is loaded from AWS. The application no longer uses browser local storage for products, sales, activities or reorder levels.
@@ -245,9 +243,7 @@ https://mrfuj9l955.execute-api.ap-southeast-2.amazonaws.com/prod
 
 ### Authentication
 
-The design requires a valid Cognito ID token in the `Authorization` header on every endpoint. Accounts are provisioned by an admin/manager (no public self-signup). Members of the `manager` Cognito group can create, update and delete products; authenticated users outside that group (staff) can record sales and view inventory/alerts but cannot manage the product catalogue.
-
-> **Note:** the Cognito authorizer is currently disabled on the API Gateway routes (`AuthorizationType.NONE`) to simplify manual testing while the frontend is being built out. The user pool, client and `manager` group are already provisioned by CDK — re-enabling the authorizer is a small config change in `cdk-stack.ts` and is planned before demo/submission.
+Every endpoint requires a valid Cognito ID token in the `Authorization` header, enforced by the API Gateway Cognito authorizer. Accounts are provisioned by an admin/manager (no public self-signup). Members of the `manager` Cognito group can create, update and delete products; authenticated users outside that group (staff) can record sales and view inventory/alerts but cannot manage the product catalogue.
 
 ## Installation and Local Frontend Testing
 
@@ -333,13 +329,11 @@ Postman is also used to test the REST API endpoints directly.
 - [x] CloudWatch logging and frontend monitoring endpoints
 - [x] AWS CDK infrastructure and S3 frontend deployment
 - [x] Removal of browser local storage for business records
+- [x] Real Amazon Cognito sign-in with manager/staff role-based access control
 
 ### In Progress
 
-- [ ] Replace the prototype login with real Amazon Cognito sign-in
-- [ ] Enable the Cognito authorizer on API Gateway routes
-- [ ] Re-enable backend manager-group permission checks
-- [ ] Add manager-controlled staff account creation
+- [ ] Add manager-controlled staff account creation (currently CLI-only via an administrator)
 - [ ] Complete final integration and user acceptance testing
 
 ### Possible Future Improvements

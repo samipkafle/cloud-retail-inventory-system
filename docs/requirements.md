@@ -6,7 +6,7 @@ Source of truth: the NIT6150 System Analysis and Design (SAD) Report (approved 1
 
 | ID | Requirement | Priority | Status |
 | --- | --- | --- | --- |
-| FR-01 | Authenticate users and apply role-based access | Must | Scaffolded, not enforced — Cognito User Pool, client and `manager` group are provisioned, and the API Gateway authorizer plus the handler's manager-group check are fully implemented but gated behind a single `AUTH_ENABLED` switch in `cdk-stack.ts` (currently `false`). Not yet flipped on because the frontend login is still a prototype role selector that never attaches a Cognito ID token to requests — enabling the authorizer first would 401 every API call |
+| FR-01 | Authenticate users and apply role-based access | Must | Implemented and enforced — the frontend signs in against the real Cognito User Pool (SRP flow via `amazon-cognito-identity-js`), attaches the ID token to every API call, and the API Gateway Cognito authorizer (`AUTH_ENABLED = true` in `cdk-stack.ts`) rejects unauthenticated requests. The `manager` Cognito group gates product create/update/delete in the handler; staff (any authenticated non-manager) can record sales and view inventory/alerts. See [architecture.md](architecture.md#authentication-and-authorization-fr-01) and [testing.md](testing.md#fr-01-authentication-and-authorization--2026-09-06) for the implementation and verification detail |
 | FR-02 | Create, edit, archive, search and view products | Must | Implemented (`/products` CRUD) |
 | FR-03 | Record daily sales with product, quantity, price and timestamp | Must | Implemented (`POST /sales`) |
 | FR-04 | Automatically update inventory after each valid sale | Must | Implemented (`POST /sales`) |
