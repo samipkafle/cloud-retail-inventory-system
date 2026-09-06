@@ -2,16 +2,25 @@
 
 ## Automated tests
 
-`infrastructure/cdk/test/lambda/` has a Jest suite covering all 6 Lambda handlers (41 tests): input validation, success paths, and error paths, using `aws-sdk-client-mock` to mock DynamoDB/SNS/CloudWatch rather than hitting real AWS. Notably includes the business-logic edge cases: oversell rejection, low-stock alert creation + SNS publish when a sale crosses the reorder threshold, the sales transaction's conflict handling (409 on a concurrent stock change), and manager-only enforcement of product writes with `AUTH_ENABLED` both on and off.
+`infrastructure/cdk/test/lambda/` has a Jest suite covering all 9 TypeScript Lambda handlers (61 tests): input validation, success paths, and error paths, using `aws-sdk-client-mock` to mock DynamoDB/SNS/CloudWatch rather than hitting real AWS. Notably includes the business-logic edge cases: oversell rejection, low-stock alert creation + SNS publish when a sale crosses the reorder threshold, the sales transaction's conflict handling (409 on a concurrent stock change), and manager-only enforcement of product writes with `AUTH_ENABLED` both on and off.
 
 ```bash
 cd infrastructure/cdk
 npm test
 ```
 
-**GitHub Actions CI** (`.github/workflows/backend-ci.yml`) runs on every PR/push touching `infrastructure/cdk/`: type-check (`tsc`), the Jest suite, and `cdk synth` — so a broken build or a failing test now blocks a PR instead of only being caught manually.
+`lambda-python/recommendation-engine/` has a separate pytest suite (15 tests) for the Python recommendation engine, using `moto` to mock DynamoDB rather than hitting real AWS:
 
-There's still no `pytest` (there's no Python code yet — see [requirements.md](requirements.md) FR-10) and no frontend test automation; see "What's not yet covered" below. All AWS-integration-level verification (does the real deployed API actually behave correctly end-to-end) remains manual — see the log below.
+```bash
+cd infrastructure/cdk/lambda-python/recommendation-engine
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt
+pytest
+```
+
+**GitHub Actions CI** (`.github/workflows/backend-ci.yml`) runs on every PR/push touching `infrastructure/cdk/`: type-check (`tsc`), the Jest suite, `cdk synth`, and the pytest suite (separate job) — so a broken build or a failing test now blocks a PR instead of only being caught manually.
+
+There's still no frontend test automation; see "What's not yet covered" below. All AWS-integration-level verification (does the real deployed API actually behave correctly end-to-end) remains manual — see the log below.
 
 ## Manual verification log
 
@@ -34,6 +43,23 @@ Performed against the live deployed stack (`ap-southeast-2`, stack `CdkStack`) a
 
 **Note on #10:** the first round of checks above (1–9) used the AWS CLI's `USER_PASSWORD_AUTH` flow, which passed and gave false confidence that sign-in worked end-to-end. The actual frontend SDK (`amazon-cognito-identity-js`'s `authenticateUser()`) defaults to the **SRP** auth flow, which was not enabled on the Cognito app client (only `USER_PASSWORD_AUTH`/`ADMIN_USER_PASSWORD_AUTH` were). This made real browser sign-in fail silently while every CLI-based check passed — a reminder that testing the API in isolation isn't the same as testing the actual client integration. Fixed by enabling `ALLOW_USER_SRP_AUTH` on the app client; a related bug found in the same pass — API Gateway's own 401/403 Gateway Responses (bypassing Lambda) lacked CORS headers, making a real auth rejection look like a generic connection failure in the browser — was fixed by adding `addGatewayResponse` CORS headers for `UNAUTHORIZED`/`ACCESS_DENIED`. Re-verified with checks 1–9 above after both fixes; confirmed working in a real browser session afterward.
 
+### FR-10 recommendation engine — 2026-09-06
+
+Two real bugs were found and fixed only by verifying against the real deployed Lambda/DynamoDB, not just the pytest suite's contrived unit-test inputs:
+
+| # | Check | Method | Result |
+| --- | --- | --- | --- |
+| 1 | First deploy attempt: `RecommendationEngineLambda` with pandas+numpy+scipy layers | `cdk deploy` | `CREATE_FAILED` — combined layer size exceeded Lambda's 250MB unzipped limit |
+| 2 | Retry with just pandas+scipy | `cdk deploy` | Still `CREATE_FAILED` on the same limit |
+| 3 | Switched to numpy-only, rewrote the regression/aggregation logic without pandas/scipy | `cdk deploy` | `CREATE_FAILED` again — turned out to be a local pytest venv (332MB) sitting inside the Lambda asset directory and getting zipped up as "function code" by `fromAsset()`, unrelated to the layer at all. Fixed by deleting the venv and adding an explicit `exclude` list to `Code.fromAsset()` |
+| 4 | Redeploy after the real fix | `cdk deploy` | `UPDATE_COMPLETE` |
+| 5 | Manually invoked the Lambda against real (sparse) production data | `aws lambda invoke` | Ran successfully — 9 products processed, 4 scored, 5 correctly marked "Insufficient data" |
+| 6 | `GET /recommendations` | curl | `200`, ranked list, all R² values near zero (0.001–0.05) — expected given how little real sales history exists |
+| 7 | Seeded ~9 months of synthetic history (`scripts/seed-synthetic-sales.ts --confirm`), re-invoked the Lambda | `aws lambda invoke` | 9/9 products scored, R² up to 0.68 |
+| 8 | Re-checked `GET /recommendations` against the seeded data | curl | **Bug found**: every product showed `trendLabel: "Stable"`, including ones with a strong, well-explained decline (R²=0.68) — the fixed absolute slope threshold (0.05 units/day) was miscalibrated against the actual slope magnitudes involved |
+| 9 | Fixed classification to key off R² (≥0.1) instead of raw slope magnitude, added regression tests, redeployed, re-invoked | `aws lambda invoke` + curl | Trend labels now correctly match each of the 9 products' designed synthetic pattern (2 growers → Increasing, 2 decliners → Decreasing, flat/weekend/seasonal products → Stable) |
+| 10 | `GET /recommendations` with no token | curl | `401` |
+
 ### Feature testing (ongoing, manual)
 
 - Product CRUD via the deployed frontend and Postman
@@ -48,6 +74,5 @@ Performed against the live deployed stack (`ap-southeast-2`, stack `CdkStack`) a
 
 - No automated integration test suite against a real/emulated AWS backend (Postman collection exists for manual use but isn't run in CI, and there's no local DynamoDB/LocalStack setup)
 - No regression coverage for the frontend (no browser automation / component tests)
-- No `pytest` (no Python code exists yet — FR-10's recommendation engine)
 
 Postman is used for manual API testing; there isn't yet a checked-in, versioned collection in this repo for the team to share.

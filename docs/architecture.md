@@ -46,11 +46,12 @@ Email notification
 | --- | --- | --- |
 | Amazon S3 | Hosts the static frontend as a public website (`FrontendBucket`); stores generated CSV reports privately, served only via presigned URL (`ReportsBucket`) | `FrontendBucket` + `BucketDeployment`, `ReportsBucket` |
 | Amazon API Gateway | REST API (`InventoryApi`), edge-optimized, Cognito-authorized | `RestApi` |
-| AWS Lambda | 6 functions — see [Lambda functions](#lambda-functions) | `NodejsFunction` |
+| AWS Lambda | 8 TypeScript functions (`NodejsFunction`) + 1 Python function — see [Lambda functions](#lambda-functions) | `NodejsFunction`, `lambda.Function` |
 | Amazon DynamoDB | 4 tables — see [Data model](#data-model) | `dynamodb.Table` |
 | Amazon Cognito | User Pool + app client + `manager` group (FR-01) | `UserPool`, `UserPoolClient`, `CfnUserPoolGroup` |
 | Amazon SNS | `RetailLowStockAlerts` topic — low-stock and frontend-error emails | `sns.Topic` |
 | Amazon CloudWatch | Custom metrics (`GreenLeaf/Frontend`), an alarm on repeated frontend errors, and Logs Insights queries for the raw event log | `cloudwatch.Metric`, `cloudwatch.Alarm` |
+| Amazon EventBridge | Daily schedule that triggers the recommendation engine's training run (FR-10) | `events.Rule` + `events.Schedule.rate()` |
 | AWS IAM | Least-privilege roles per Lambda, plus explicit policy statements where table grants don't cover an action (transactions, CloudWatch, Logs Insights) | `iam.PolicyStatement` |
 | AWS CDK | Infrastructure as code for all of the above | `infrastructure/cdk/lib/cdk-stack.ts` |
 
@@ -97,6 +98,20 @@ Partition key: `alertId` (String, UUID)
 
 These three fields (`stockAtAlert`, `reorderThreshold`, `raisedAt`) go beyond the SAD report's Section 4 Alert entity — see [requirements.md](requirements.md) for why.
 
+### RetailRecommendations (FR-10)
+Partition key: `productId` (String) — one current recommendation per product, overwritten by each training run.
+
+| Attribute | Type | Notes |
+| --- | --- | --- |
+| `productId` | String | FK to RetailInventory |
+| `predictedDemand` | Number | Predicted total demand over the next 14 days |
+| `trendLabel` | String | `Increasing`, `Decreasing`, `Stable`, or `Insufficient data` |
+| `modelVersion` | String | e.g. `trend-linreg-v1` |
+| `generatedAt` | String | ISO 8601, when this training run wrote the item |
+| `basis` | String | Human-readable explanation (days of history, R²) — the AI-as-decision-support framing depends on this being shown to the user, not hidden |
+| `daysOfHistory` | Number | |
+| `rSquared` | Number | Omitted when `trendLabel` is `Insufficient data` |
+
 ### RetailActivities (shared audit log)
 Partition key: `activityId` (String, UUID)
 
@@ -121,6 +136,8 @@ Partition key: `activityId` (String, UUID)
 | InventoryStatusLambda | `lambda/inventory-status-handler.ts` | `GET /inventory` | Read RetailInventory |
 | ForecastLambda | `lambda/forecast-handler.ts` | `GET /forecast`, `GET /forecast/{productId}` | Read RetailInventory, Query RetailSales (`productId-soldAt-index` GSI) |
 | ReportsLambda | `lambda/reports-handler.ts` | `GET /reports` | Read RetailInventory, Read RetailSales, read/write the private Reports S3 bucket |
+| RecommendationEngineLambda (Python) | `lambda-python/recommendation-engine/handler.py` | None — runs on a daily EventBridge schedule, not an API route | Read RetailInventory, Read RetailSales, write RetailRecommendations |
+| RecommendationsLambda | `lambda/recommendations-handler.ts` | `GET /recommendations` | Read RetailRecommendations |
 | TelemetryLambda | `lambda/telemetry-handler.ts` | `POST/GET /telemetry`, `GET /telemetry/events` | None (CloudWatch metrics + Logs Insights only) |
 
 All run on `NODEJS_24_X`, bundled per-function via `NodejsFunction` (esbuild, no Docker).
@@ -151,6 +168,7 @@ See [testing.md](testing.md) for the verification evidence for all of the above.
 | GET | `/forecast` | Forecast | Any authenticated user |
 | GET | `/forecast/{productId}` | Forecast | Any authenticated user |
 | GET | `/reports` | Reports | Any authenticated user |
+| GET | `/recommendations` | Recommendations | Any authenticated user |
 | GET | `/alerts` | Alerts | Any authenticated user |
 | GET | `/activities` | Activity | Any authenticated user |
 | POST | `/activities` | Activity | Any authenticated user |
@@ -168,6 +186,19 @@ Every route also gets an auto-generated `OPTIONS` method (CORS preflight, `Autho
 4. A `TransactWriteItemsCommand` atomically decrements stock (conditioned on `stock >= quantity`) and inserts the sale record — a sale is never recorded without its matching stock update, and vice versa. A `ConditionalCheckFailedException`/`TransactionCanceledException` (stock changed concurrently) returns 409 for the frontend to retry against fresh data.
 5. Re-reads the product's remaining stock. If it's at or below `reorderThreshold`, writes a `RetailAlerts` item and publishes an SNS notification (both best-effort — a failure here is logged but doesn't fail the sale itself).
 6. Frontend reloads shared products, sales and activity data.
+
+## Demand recommendation engine (FR-10)
+
+1. `RecommendationSchedule` (an EventBridge rule, `rate(1 day)`) invokes `RecommendationEngineLambda` — the one deliberate Python function in an otherwise all-TypeScript stack. It can also be invoked manually (`aws lambda invoke`) to refresh recommendations on demand, e.g. right after seeding data.
+2. The function scans RetailInventory and RetailSales, groups each product's sales into a zero-filled daily series (days with no sale count as 0, not "missing"), and fits an ordinary-least-squares line (`numpy.polyfit`) to that series.
+3. A product needs at least 7 days of history to get a real prediction; fewer than that writes `trendLabel: "Insufficient data"` instead of guessing.
+4. `trendLabel` is decided by R² first, not raw slope magnitude: a trend is only called `Increasing`/`Decreasing` if the line explains at least 10% of the day-to-day variance (`rSquared >= 0.1`); otherwise it's `Stable` regardless of the slope's sign or size. An earlier version used a fixed slope-magnitude threshold instead, which miscalibrated across products with different sales volumes — see the commit history / [testing.md](testing.md) for the bug this real-data verification caught.
+5. Every product gets a recommendation row (never skipped silently) — `predictedDemand`, `trendLabel`, `basis`, `daysOfHistory` and `rSquared` are written to RetailRecommendations via one `batch_writer` call, keyed so a new run overwrites the previous one rather than accumulating history.
+6. `GET /recommendations` (`recommendations-handler.ts`) reads that table back, ranked by `predictedDemand` descending.
+
+**Why numpy, and why R² instead of scikit-learn's own diagnostics:** see [requirements.md](requirements.md)'s technology-stack deviation section for the scikit-learn substitution, and [testing.md](testing.md) for the real-data verification that caught both the NaN-on-zero-variance bug and the slope-threshold miscalibration before this was considered done.
+
+**Training data:** the SAD report's top-flagged risk is "Insufficient sales history for ML" (High/High), mitigated by seeding a synthetic ~9-month history. `scripts/seed-synthetic-sales.ts` does exactly that — a dry-run-by-default, idempotent script (deterministic `saleId`s, tagged `synthetic: true`) that gives each real product a distinct deliberate pattern (steady growth, decline, weekend-heavy, seasonal, flat) rather than uniform noise, so the engine visibly produces different trend labels across products.
 
 ## Monitoring and telemetry
 
