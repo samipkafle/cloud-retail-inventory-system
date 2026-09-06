@@ -1,0 +1,9 @@
+# Test-only dependencies. handler.py itself ships with zero pip
+# dependencies — boto3 comes from the Lambda runtime and numpy comes from
+# the Klayers layer attached in cdk-stack.ts (RecommendationEngineLambda).
+# This file exists purely so `pytest` can run locally against the same
+# library the deployed function uses.
+boto3
+numpy
+pytest
+moto[dynamodb]

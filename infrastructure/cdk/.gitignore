@@ -6,3 +6,10 @@ node_modules
 # CDK asset staging directory
 .cdk.staging
 cdk.out
+
+# Python (lambda-python/) — deployed function code ships zero pip
+# dependencies (see requirements-dev.txt); these are test-only artifacts
+.venv
+__pycache__
+*.pyc
+.pytest_cache

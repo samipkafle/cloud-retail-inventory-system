@@ -12,6 +12,8 @@ import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as cloudwatchActions from 'aws-cdk-lib/aws-cloudwatch-actions';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as eventsTargets from 'aws-cdk-lib/aws-events-targets';
 
 export class CdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -79,6 +81,21 @@ export class CdkStack extends cdk.Stack {
 
       partitionKey: {
         name: 'activityId',
+        type: dynamodb.AttributeType.STRING,
+      },
+
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // DynamoDB Recommendation Table (FR-10). One current recommendation per
+    // product, overwritten by each scheduled training run.
+    const recommendationTable = new dynamodb.Table(this, 'RecommendationTable', {
+      tableName: 'RetailRecommendations',
+
+      partitionKey: {
+        name: 'productId',
         type: dynamodb.AttributeType.STRING,
       },
 
@@ -337,6 +354,84 @@ export class CdkStack extends cdk.Stack {
     salesTable.grantReadData(reportsLambda);
     reportsBucket.grantReadWrite(reportsLambda);
 
+    // Recommendation Engine Lambda (FR-10) — the one deliberate Python
+    // Lambda in an otherwise all-TypeScript stack. Fits a linear trend to
+    // each product's daily sales history and writes a demand recommendation.
+    // scikit-learn (the SAD report's original choice) has no public Lambda
+    // layer for ap-southeast-2 on a current runtime; numpy.polyfit does the
+    // same ordinary-least-squares regression and is available via Klayers
+    // (github.com/keithrozario/Klayers) — see docs/requirements.md for the
+    // documented substitution. pandas+scipy were tried first (for the same
+    // job) but their combined unzipped size exceeded Lambda's 250MB layer
+    // limit; numpy alone comfortably fits and is all the math needs. No pip
+    // dependencies are bundled with the function code itself (boto3 ships
+    // with the Lambda runtime; numpy comes from the layer below), so no
+    // Docker bundling step is needed to deploy this.
+    const numpyLayer = lambda.LayerVersion.fromLayerVersionArn(
+      this,
+      'NumpyLayer',
+      'arn:aws:lambda:ap-southeast-2:770693421928:layer:Klayers-p312-numpy:18'
+    );
+
+    const recommendationEngineLambda = new lambda.Function(this, 'RecommendationEngineLambda', {
+      runtime: lambda.Runtime.PYTHON_3_12,
+      handler: 'handler.handler',
+      // fromAsset zips the whole directory regardless of .gitignore, so
+      // local test artifacts (a pytest venv, __pycache__) must be excluded
+      // explicitly here or they get bundled as "function code" — a 300MB+
+      // local venv blowing past Lambda's 250MB unzipped limit is exactly
+      // how this was first discovered.
+      code: lambda.Code.fromAsset('lambda-python/recommendation-engine', {
+        exclude: ['.venv', '__pycache__', '.pytest_cache', '*.pyc', 'test_handler.py', 'requirements-dev.txt'],
+      }),
+      layers: [numpyLayer],
+      timeout: cdk.Duration.minutes(2),
+      memorySize: 512,
+
+      environment: {
+        PRODUCTS_TABLE_NAME: inventoryTable.tableName,
+        SALES_TABLE_NAME: salesTable.tableName,
+        RECOMMENDATIONS_TABLE_NAME: recommendationTable.tableName,
+      },
+    });
+
+    inventoryTable.grantReadData(recommendationEngineLambda);
+    salesTable.grantReadData(recommendationEngineLambda);
+    recommendationTable.grantWriteData(recommendationEngineLambda);
+
+    // Runs the training job daily so recommendations reflect the previous
+    // day's sales without needing a manual trigger.
+    new events.Rule(this, 'RecommendationSchedule', {
+      schedule: events.Schedule.rate(cdk.Duration.days(1)),
+      targets: [new eventsTargets.LambdaFunction(recommendationEngineLambda)],
+    });
+
+    // Recommendations Lambda Function — GET /recommendations reads what the
+    // Python engine last wrote. Kept as a separate, ordinary TypeScript
+    // Lambda (like every other read endpoint) rather than mixing API
+    // Gateway integration concerns into the Python training function.
+    const recommendationsLambda = new lambdaNodejs.NodejsFunction(
+      this,
+      'RecommendationsLambda',
+      {
+        runtime: lambda.Runtime.NODEJS_24_X,
+
+        entry: 'lambda/recommendations-handler.ts',
+
+        handler: 'handler',
+
+        bundling: {
+          forceDockerBundling: false,
+        },
+
+        environment: {
+          RECOMMENDATIONS_TABLE_NAME: recommendationTable.tableName,
+        },
+      }
+    );
+
+    recommendationTable.grantReadData(recommendationsLambda);
+
     // Telemetry Lambda Function — POST records frontend health/error events
     // as CloudWatch custom metrics (see js/api.js sendTelemetry); GET reads
     // them back as an aggregated summary (see js/api.js getTelemetrySummary)
@@ -568,6 +663,16 @@ export class CdkStack extends cdk.Stack {
     forecastProduct.addMethod(
       'GET',
       new apigateway.LambdaIntegration(forecastLambda),
+      authOptions
+    );
+
+    // /recommendations
+    const recommendations = api.root.addResource('recommendations');
+
+    // GET /recommendations
+    recommendations.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(recommendationsLambda),
       authOptions
     );
 
