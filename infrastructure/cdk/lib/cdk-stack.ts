@@ -276,6 +276,31 @@ export class CdkStack extends cdk.Stack {
 
     inventoryTable.grantReadData(inventoryStatusLambda);
 
+    // Forecast Lambda Function — GET /forecast and GET /forecast/{productId}
+    // (FR-09). Mirrors the 14-day sales-velocity calculation that already
+    // runs client-side in frontend/js/inventory.js, as a shared/Lambda-
+    // computed source of truth rather than each device computing its own.
+    const forecastLambda = new lambdaNodejs.NodejsFunction(this, 'ForecastLambda', {
+      runtime: lambda.Runtime.NODEJS_24_X,
+
+      entry: 'lambda/forecast-handler.ts',
+
+      handler: 'handler',
+
+      bundling: {
+        forceDockerBundling: false,
+      },
+
+      environment: {
+        PRODUCTS_TABLE_NAME: inventoryTable.tableName,
+        SALES_TABLE_NAME: salesTable.tableName,
+        SALES_INDEX_NAME: 'productId-soldAt-index',
+      },
+    });
+
+    inventoryTable.grantReadData(forecastLambda);
+    salesTable.grantReadData(forecastLambda);
+
     // Telemetry Lambda Function — POST records frontend health/error events
     // as CloudWatch custom metrics (see js/api.js sendTelemetry); GET reads
     // them back as an aggregated summary (see js/api.js getTelemetrySummary)
@@ -487,6 +512,26 @@ export class CdkStack extends cdk.Stack {
     inventory.addMethod(
       'GET',
       new apigateway.LambdaIntegration(inventoryStatusLambda),
+      authOptions
+    );
+
+    // /forecast
+    const forecast = api.root.addResource('forecast');
+
+    // GET /forecast — every product's restock forecast, most urgent first
+    forecast.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(forecastLambda),
+      authOptions
+    );
+
+    // /forecast/{productId}
+    const forecastProduct = forecast.addResource('{productId}');
+
+    // GET /forecast/{productId}
+    forecastProduct.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(forecastLambda),
       authOptions
     );
 
