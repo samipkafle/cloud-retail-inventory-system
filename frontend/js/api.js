@@ -22,7 +22,10 @@ export function sendTelemetry(status, message, duration = null) {
 
   fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(state.idToken ? { Authorization: state.idToken } : {}),
+    },
     body: JSON.stringify({
       status,
       message,
@@ -58,6 +61,7 @@ export async function apiRequest(path = "", options = {}) {
       method,
       headers: {
         "Content-Type": "application/json",
+        ...(state.idToken ? { Authorization: state.idToken } : {}),
         ...(options.headers || {}),
       },
       body: options.body === undefined ? undefined : JSON.stringify(options.body),

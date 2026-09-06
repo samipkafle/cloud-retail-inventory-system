@@ -1,4 +1,5 @@
 import { state, ROLE_PROFILES } from "./config.js";
+import { signIn, signOut, roleFromClaims } from "./auth.js";
 import { $, $$ } from "./utils.js";
 import {
   loadProducts,
@@ -41,8 +42,8 @@ async function enterApp(session) {
   await loadProducts();
 }
 
-// Validates the prototype login form and starts a session.
-function handleLogin(event) {
+// Authenticates against the real Cognito user pool and starts a session.
+async function handleLogin(event) {
   event.preventDefault();
   const email = $("#loginEmail").value.trim();
   const password = $("#loginPassword").value;
@@ -55,11 +56,26 @@ function handleLogin(event) {
     return;
   }
 
-  enterApp({ role: state.role, email });
+  setFormError("#loginError");
+  const loginButton = $("#loginButton");
+  loginButton.disabled = true;
+
+  try {
+    const claims = await signIn(email, password);
+    await enterApp({ role: roleFromClaims(claims), email });
+  } catch (error) {
+    setFormError(
+      "#loginError",
+      error?.message || "Sign-in failed. Check the email and password and try again.",
+    );
+  } finally {
+    loginButton.disabled = false;
+  }
 }
 
 // Ends the current session and returns to the login screen.
 function logout() {
+  signOut();
   $("#appShell").hidden = true;
   $("#loginView").hidden = false;
   selectRole(state.role);

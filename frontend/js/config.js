@@ -2,6 +2,10 @@
 export const DEFAULT_API_URL =
   "https://mrfuj9l955.execute-api.ap-southeast-2.amazonaws.com/prod";
 
+// Cognito User Pool backing real sign-in (see cdk-stack.ts UserPool/UserPoolClient outputs).
+export const COGNITO_USER_POOL_ID = "ap-southeast-2_2qGB7C8pq";
+export const COGNITO_CLIENT_ID = "69h1dgr70obd9jtkm10i7i95qe";
+
 // Prototype user profiles used by the login screen.
 export const ROLE_PROFILES = {
   manager: {
@@ -24,6 +28,7 @@ export const ROLE_PROFILES = {
 // Stores temporary runtime state. Persistent business data comes from AWS.
 export const state = {
   apiUrl: DEFAULT_API_URL,
+  idToken: null,
   products: [],
   sales: [],
   activities: [],

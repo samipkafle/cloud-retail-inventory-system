@@ -109,15 +109,12 @@
           <span class="section-kicker">Welcome back</span>
           <h2>Sign in to your workspace</h2>
 
-          <div id="roleSwitch" class="role-switch" aria-label="Choose prototype role">
+          <div id="roleSwitch" class="role-switch" aria-label="Choose a demo account">
             <button type="button" class="active" data-role="manager">
               <strong>Manager</strong><small>Full access</small>
             </button>
             <button type="button" data-role="staff">
               <strong>Staff</strong><small>Daily operations</small>
-            </button>
-            <button type="button" data-role="maintainer">
-              <strong>Maintainer</strong><small>System health</small>
             </button>
           </div>
 
@@ -127,7 +124,7 @@
           </label>
           <label>
             Password
-            <input id="loginPassword" type="password" value="demo123" minlength="4" required />
+            <input id="loginPassword" type="password" value="Demo@123" minlength="4" required />
           </label>
 
           <p id="loginError" class="form-error" hidden></p>
@@ -171,7 +168,7 @@
           <button class="nav-button" type="button" data-page="reports" data-roles="manager">
             <svg><use href="#icon-chart"></use></svg><span>Reports</span>
           </button>
-          <button class="nav-button" type="button" data-page="monitoring" data-roles="maintainer">
+          <button class="nav-button" type="button" data-page="monitoring" data-roles="manager,maintainer">
             <svg><use href="#icon-cloud"></use></svg><span>Monitoring</span>
           </button>
         </nav>
@@ -542,6 +539,7 @@
       <span><svg><use href="#icon-check"></use></svg></span><p id="toastText"></p>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.20/dist/amazon-cognito-identity.min.js"></script>
     <script type="module" src="script.js"></script>
   </body>
 </html>

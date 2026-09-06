@@ -135,11 +135,11 @@ export class CdkStack extends cdk.Stack {
       groupName: 'manager',
     });
 
-    // Single switch for FR-01 enforcement. Flip to true once the frontend
-    // has real Cognito sign-in wired up (it currently only has a prototype
-    // role selector and never attaches an ID token to API requests) —
-    // enabling this before then will make every API call 401.
-    const AUTH_ENABLED = false;
+    // Single switch for FR-01 enforcement. The frontend now signs in against
+    // this User Pool and attaches the ID token to every API request
+    // (frontend/js/auth.js, frontend/js/api.js) — flip back to false only if
+    // testing without a real Cognito session.
+    const AUTH_ENABLED = true;
 
     const apiAuthorizer = AUTH_ENABLED
       ? new apigateway.CognitoUserPoolsAuthorizer(this, 'ApiAuthorizer', {
@@ -356,7 +356,7 @@ export class CdkStack extends cdk.Stack {
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
-        allowHeaders: ['Content-Type'],
+        allowHeaders: ['Content-Type', 'Authorization'],
       },
     });
 
