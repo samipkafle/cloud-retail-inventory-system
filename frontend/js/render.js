@@ -5,8 +5,6 @@ import {
   groupSalesByDay,
   getStockStatus,
   getMetadata,
-  getForecasts,
-  demandLabel,
 } from "./inventory.js";
 import {
   $,
@@ -107,10 +105,10 @@ export function renderBarChart(selector, days, field) {
     .join("");
 }
 
-// Displays the highest-priority restocking forecast.
+// Displays the highest-priority restocking forecast (from GET /forecast,
+// state.forecasts — see loadProducts() in actions.js).
 export function renderForecast() {
-  const forecasts = getForecasts();
-  const forecast = forecasts.find((item) => item.sold > 0);
+  const forecast = state.forecasts.find((item) => item.soldLast14Days > 0);
   const button = $("#forecastActionButton");
 
   if (!forecast) {
@@ -130,15 +128,15 @@ export function renderForecast() {
     : "—";
 
   $("#forecastTitle").textContent =
-    `${forecast.product.name} is the next restock priority`;
-  $("#forecastText").textContent = forecast.suggested
-    ? `Add about ${forecast.suggested} units to cover expected demand and maintain a safety buffer.`
+    `${forecast.name} is the next restock priority`;
+  $("#forecastText").textContent = forecast.suggestedRestockQuantity
+    ? `Add about ${forecast.suggestedRestockQuantity} units to cover expected demand and maintain a safety buffer.`
     : "Current stock is sufficient for the present sales pace.";
-  $("#forecastDemand").textContent = demandLabel(forecast.daily);
+  $("#forecastDemand").textContent = forecast.demandLabel;
   $("#forecastDays").textContent = typeof days === "number" ? `${days} days` : days;
-  $("#forecastStock").textContent = `${forecast.product.stock} units`;
-  button.disabled = forecast.suggested <= 0;
-  button.dataset.productId = forecast.product.productId;
+  $("#forecastStock").textContent = `${forecast.stock} units`;
+  button.disabled = forecast.suggestedRestockQuantity <= 0;
+  button.dataset.productId = forecast.productId;
 }
 
 // Displays the latest product and sales activities.
@@ -326,25 +324,26 @@ export function renderAlerts() {
     .join("");
 }
 
-// Displays demand forecasts and restocking recommendations.
+// Displays demand forecasts and restocking recommendations (from GET
+// /forecast, state.forecasts — see loadProducts() in actions.js).
 export function renderInsights() {
-  const forecasts = getForecasts();
-  const withSales = forecasts.filter((item) => item.sold > 0);
+  const forecasts = state.forecasts;
+  const withSales = forecasts.filter((item) => item.soldLast14Days > 0);
   const top = withSales[0];
   const confidence = withSales.length ? Math.min(92, 62 + withSales.length * 6) : 24;
 
   $("#insightHero").innerHTML = top
     ? `<div><span class="section-kicker">Highest restock priority</span><h2>${escapeHtml(
-        top.product.name,
+        top.name,
       )} may need attention in ${Math.max(
         0,
         Math.round(top.daysRemaining),
       )} days.</h2><p>${
-        top.sold
+        top.soldLast14Days
       } units were recorded as sold during the last 14 days. The recommended safety stock is based on that sales pace and the product's reorder level.</p><button type="button" data-action="restock" data-id="${escapeHtml(
-        top.product.productId,
+        top.productId,
       )}">Apply ${
-        top.suggested || 0
+        top.suggestedRestockQuantity || 0
       }-unit restock</button></div><div class="confidence-ring" style="background:conic-gradient(var(--lime) 0 ${confidence}%, rgba(255,255,255,.12) ${confidence}%)"><div><strong>${confidence}%</strong><span>Data confidence</span></div></div>`
     : `<div><span class="section-kicker">Forecast setup</span><h2>Record product sales to unlock demand recommendations.</h2><p>The prototype needs transaction quantities to calculate sales velocity, days of stock remaining and suggested restock quantities.</p><button type="button" class="open-sale-button">Record the first sale</button></div><div class="confidence-ring" style="background:conic-gradient(var(--lime) 0 ${confidence}%, rgba(255,255,255,.12) ${confidence}%)"><div><strong>${confidence}%</strong><span>Data confidence</span></div></div>`;
 
@@ -355,10 +354,10 @@ export function renderInsights() {
           const days = Number.isFinite(forecast.daysRemaining)
             ? `${Math.max(0, Math.round(forecast.daysRemaining))} days`
             : "Not available";
-          const copy = forecast.sold
-            ? `Recent velocity is ${forecast.daily.toFixed(1)} units per day. ${
-                forecast.suggested
-                  ? `Add ${forecast.suggested} units for a two-week buffer.`
+          const copy = forecast.soldLast14Days
+            ? `Recent velocity is ${forecast.averageDailySales.toFixed(1)} units per day. ${
+                forecast.suggestedRestockQuantity
+                  ? `Add ${forecast.suggestedRestockQuantity} units for a two-week buffer.`
                   : "Stock is currently sufficient."
               }`
             : "No recorded sales yet. The current recommendation is based on its stock threshold.";
@@ -366,14 +365,14 @@ export function renderInsights() {
           return `<article class="content-card recommendation"><div class="recommendation-head"><span class="rank">0${
             index + 1
           }</span><span class="trend-tag">${escapeHtml(
-            demandLabel(forecast.daily),
-          )}</span></div><h3>${escapeHtml(forecast.product.name)}</h3><p>${escapeHtml(
+            forecast.demandLabel,
+          )}</span></div><h3>${escapeHtml(forecast.name)}</h3><p>${escapeHtml(
             copy,
           )}</p><div class="recommendation-stats"><span><small>Days remaining</small><b>${days}</b></span><span><small>Suggested order</small><b>${
-            forecast.suggested
+            forecast.suggestedRestockQuantity
           } units</b></span></div><button class="secondary-button" type="button" data-action="restock" data-id="${escapeHtml(
-            forecast.product.productId,
-          )}" ${forecast.suggested <= 0 ? "disabled" : ""}>Apply restock</button></article>`;
+            forecast.productId,
+          )}" ${forecast.suggestedRestockQuantity <= 0 ? "disabled" : ""}>Apply restock</button></article>`;
         })
         .join("")
     : `<article class="content-card recommendation"><h3>No products available</h3><p>Add products to begin stock planning.</p></article>`;

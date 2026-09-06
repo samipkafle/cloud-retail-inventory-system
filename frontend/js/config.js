@@ -32,6 +32,7 @@ export const state = {
   products: [],
   sales: [],
   activities: [],
+  forecasts: [],
   role: "manager",
   user: ROLE_PROFILES.manager,
   currentPage: "overview",

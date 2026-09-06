@@ -119,6 +119,7 @@ Partition key: `activityId` (String, UUID)
 | AlertsLambda | `lambda/alerts-handler.ts` | `GET /alerts` | Read RetailAlerts |
 | ActivityLambda | `lambda/activity-handler.ts` | `GET/POST /activities` | Read/write RetailActivities |
 | InventoryStatusLambda | `lambda/inventory-status-handler.ts` | `GET /inventory` | Read RetailInventory |
+| ForecastLambda | `lambda/forecast-handler.ts` | `GET /forecast`, `GET /forecast/{productId}` | Read RetailInventory, Query RetailSales (`productId-soldAt-index` GSI) |
 | TelemetryLambda | `lambda/telemetry-handler.ts` | `POST/GET /telemetry`, `GET /telemetry/events` | None (CloudWatch metrics + Logs Insights only) |
 
 All run on `NODEJS_24_X`, bundled per-function via `NodejsFunction` (esbuild, no Docker).
@@ -146,6 +147,8 @@ See [testing.md](testing.md) for the verification evidence for all of the above.
 | GET | `/sales` | Sales | Any authenticated user |
 | POST | `/sales` | Sales | Any authenticated user |
 | GET | `/inventory` | InventoryStatus | Any authenticated user |
+| GET | `/forecast` | Forecast | Any authenticated user |
+| GET | `/forecast/{productId}` | Forecast | Any authenticated user |
 | GET | `/alerts` | Alerts | Any authenticated user |
 | GET | `/activities` | Activity | Any authenticated user |
 | POST | `/activities` | Activity | Any authenticated user |
@@ -186,7 +189,7 @@ Static HTML/CSS/vanilla JavaScript ES modules (`frontend/`), no build step or bu
 | `js/api.js` | All API Gateway requests, including attaching the Cognito ID token |
 | `js/actions.js` | Product/sale forms, restocking, CSV export, data loading |
 | `js/config.js` | Runtime config: API URL, Cognito Pool/Client IDs, shared `state` |
-| `js/inventory.js` | Stock status, 14-day sales velocity forecast (FR-09), demand labels |
+| `js/inventory.js` | Stock status, sales-history helpers used by the dashboard charts |
 | `js/render.js` | Renders dashboard pages, tables, charts, reports |
 | `js/ui.js` | Modals, navigation, role-based visibility, loading states |
 | `js/utils.js` | Formatting, validation, HTML/CSV helpers |

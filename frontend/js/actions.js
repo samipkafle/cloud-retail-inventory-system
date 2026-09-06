@@ -10,7 +10,6 @@ import {
 import {
   getMetadata,
   getStockStatus,
-  getForecasts,
   addActivity,
 } from "./inventory.js";
 import {
@@ -20,6 +19,7 @@ import {
   recordSale,
   getSales,
   getActivities,
+  getForecasts,
   deleteProduct,
   friendlyApiError,
   getTelemetrySummary,
@@ -111,6 +111,16 @@ export async function loadProducts({ showLoader = true } = {}) {
       throw new Error("GET /activities did not return an audit list.");
     }
     state.activities = prepareActivities(activitiesResponse);
+
+    // Best-effort: the Insights page degrades to an empty state without
+    // this, so a forecast failure shouldn't block the rest of the dashboard.
+    try {
+      const forecastsResponse = await getForecasts();
+      state.forecasts = Array.isArray(forecastsResponse) ? forecastsResponse : [];
+    } catch (forecastError) {
+      console.error("Unable to load forecasts:", forecastError);
+      state.forecasts = [];
+    }
 
     state.lastCheckedAt = new Date().toISOString();
     renderAll();
@@ -324,11 +334,11 @@ export async function restockProduct(productId) {
   if (!product) return;
 
   const metadata = getMetadata(product.productId, product.name);
-  const forecast = getForecasts().find((item) => item.product.productId === productId);
+  const forecast = state.forecasts.find((item) => item.productId === productId);
   const target = Math.max(
     product.stock + 1,
     metadata.reorderLevel * 3,
-    forecast ? product.stock + forecast.suggested : 0,
+    forecast ? product.stock + forecast.suggestedRestockQuantity : 0,
   );
   const unitsAdded = target - product.stock;
 

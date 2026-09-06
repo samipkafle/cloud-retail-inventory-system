@@ -42,11 +42,6 @@ export function recentSales(days = 14) {
   return state.sales.filter((sale) => new Date(sale.createdAt) >= start);
 }
 
-// Returns recent sales belonging to a particular product.
-export function productSales(productId, days = 14) {
-  return recentSales(days).filter((sale) => sale.productId === productId);
-}
-
 // Groups recorded sales by day and calculates daily totals.
 export function groupSalesByDay(days = 7) {
   const grouped = [];
@@ -119,34 +114,4 @@ export async function addActivity(type, title, detail, status = "Completed") {
     console.error("Unable to share audit activity:", error);
     return false;
   }
-}
-
-// Calculates sales velocity and suggested restock quantities.
-export function getForecasts() {
-  return state.products
-    .map((product) => {
-      const sales = productSales(product.productId, 14);
-      const sold = sales.reduce((sum, sale) => sum + Number(sale.quantity || 0), 0);
-      const daily = sold / 14;
-      const metadata = getMetadata(product.productId, product.name);
-      const daysRemaining = daily > 0 ? product.stock / daily : Infinity;
-      const target = Math.max(metadata.reorderLevel * 3, Math.ceil(daily * 14 * 1.15));
-      const suggested = Math.max(0, target - product.stock);
-
-      return { product, sold, daily, daysRemaining, suggested, metadata };
-    })
-    .sort((first, second) => {
-      if (first.daysRemaining !== second.daysRemaining) {
-        return first.daysRemaining - second.daysRemaining;
-      }
-      return second.sold - first.sold;
-    });
-}
-
-// Converts a daily sales rate into a demand label.
-export function demandLabel(daily) {
-  if (daily >= 2) return "High demand";
-  if (daily >= 0.75) return "Steady demand";
-  if (daily > 0) return "Emerging demand";
-  return "No sales yet";
 }

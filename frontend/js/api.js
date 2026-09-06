@@ -104,6 +104,13 @@ export function getActivities(limit = 100) {
   return apiRequest(`/activities?limit=${limit}`);
 }
 
+// Loads every product's 14-day sales-velocity forecast (FR-09), ranked most
+// urgent-to-restock first. Computed server-side (lambda/forecast-handler.ts)
+// so every device sees the same numbers, rather than each computing its own.
+export function getForecasts() {
+  return apiRequest("/forecast");
+}
+
 // Records an audit entry through AWS.
 export function recordActivity(activity) {
   return apiRequest("/activities", { method: "POST", body: activity });
