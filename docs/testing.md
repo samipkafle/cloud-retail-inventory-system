@@ -1,8 +1,17 @@
 # Testing
 
-## Current state: no automated test suite
+## Automated tests
 
-Despite `jest` being listed as a dependency in `infrastructure/cdk/package.json`, there are currently **no** `.test.ts`/`.spec.ts` files anywhere in the repo, no `pytest` (there's no Python code yet either — see [requirements.md](requirements.md) FR-10), and no CI workflow (`.github/workflows/` doesn't exist). All verification to date has been manual, either through the deployed frontend, Postman, or direct AWS CLI/curl calls against the live stack. This is a real gap against the SAD report's testing plan (Jest + aws-sdk-client-mock for TS Lambdas, Postman collections, GitHub Actions CI) and should be treated as outstanding work, not evidence that the system is untested — see the manual verification log below for what has actually been checked.
+`infrastructure/cdk/test/lambda/` has a Jest suite covering all 6 Lambda handlers (41 tests): input validation, success paths, and error paths, using `aws-sdk-client-mock` to mock DynamoDB/SNS/CloudWatch rather than hitting real AWS. Notably includes the business-logic edge cases: oversell rejection, low-stock alert creation + SNS publish when a sale crosses the reorder threshold, the sales transaction's conflict handling (409 on a concurrent stock change), and manager-only enforcement of product writes with `AUTH_ENABLED` both on and off.
+
+```bash
+cd infrastructure/cdk
+npm test
+```
+
+**GitHub Actions CI** (`.github/workflows/backend-ci.yml`) runs on every PR/push touching `infrastructure/cdk/`: type-check (`tsc`), the Jest suite, and `cdk synth` — so a broken build or a failing test now blocks a PR instead of only being caught manually.
+
+There's still no `pytest` (there's no Python code yet — see [requirements.md](requirements.md) FR-10) and no frontend test automation; see "What's not yet covered" below. All AWS-integration-level verification (does the real deployed API actually behave correctly end-to-end) remains manual — see the log below.
 
 ## Manual verification log
 
@@ -37,9 +46,8 @@ Performed against the live deployed stack (`ap-southeast-2`, stack `CdkStack`) a
 
 ## What's not yet covered
 
-- No unit tests for any Lambda handler (input validation, DynamoDB error paths, the sales transaction's conditional-check/conflict handling, alert-raising logic)
-- No automated integration test suite (Postman collection exists for manual use but isn't run in CI)
-- No CI pipeline — nothing currently blocks a PR with a broken build or a failing `cdk synth`
+- No automated integration test suite against a real/emulated AWS backend (Postman collection exists for manual use but isn't run in CI, and there's no local DynamoDB/LocalStack setup)
 - No regression coverage for the frontend (no browser automation / component tests)
+- No `pytest` (no Python code exists yet — FR-10's recommendation engine)
 
 Postman is used for manual API testing; there isn't yet a checked-in, versioned collection in this repo for the team to share.
