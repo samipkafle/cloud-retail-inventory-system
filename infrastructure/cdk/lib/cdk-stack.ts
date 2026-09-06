@@ -118,6 +118,9 @@ export class CdkStack extends cdk.Stack {
       userPool,
       generateSecret: false,
       authFlows: {
+        // userSrp is required by the frontend's amazon-cognito-identity-js
+        // CognitoUser.authenticateUser(), which defaults to the SRP flow.
+        userSrp: true,
         userPassword: true,
         adminUserPassword: true,
       },
@@ -357,6 +360,27 @@ export class CdkStack extends cdk.Stack {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
         allowHeaders: ['Content-Type', 'Authorization'],
+      },
+    });
+
+    // API Gateway's own 401/403 responses (rejected/missing/expired Cognito
+    // token) bypass Lambda entirely, so they don't carry the CORS headers
+    // the Lambda handlers add themselves. Without these, a browser reports
+    // a real 401/403 as a generic CORS/network failure instead of letting
+    // the frontend read the response and show "please sign in again".
+    api.addGatewayResponse('UnauthorizedResponse', {
+      type: apigateway.ResponseType.UNAUTHORIZED,
+      responseHeaders: {
+        'Access-Control-Allow-Origin': "'*'",
+        'Access-Control-Allow-Headers': "'Content-Type,Authorization'",
+      },
+    });
+
+    api.addGatewayResponse('AccessDeniedResponse', {
+      type: apigateway.ResponseType.ACCESS_DENIED,
+      responseHeaders: {
+        'Access-Control-Allow-Origin': "'*'",
+        'Access-Control-Allow-Headers': "'Content-Type,Authorization'",
       },
     });
 
