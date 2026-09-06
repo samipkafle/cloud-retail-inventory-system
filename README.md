@@ -1,103 +1,381 @@
-# Cloud-Based Retail Inventory and Sales Monitoring System Using AWS Serverless Architecture
+# GreenLeaf Cloud Retail Inventory System
 
 ## Project Overview
 
-This project focuses on developing a cloud-based retail inventory and sales monitoring system using AWS serverless technologies. The system aims to help retail businesses manage products, record daily sales, monitor inventory levels, and receive automated stock alerts.
+GreenLeaf is a cloud-based retail inventory and sales monitoring system built with an AWS serverless architecture. It gives store staff one place to view products, record sales, monitor stock, review business activity and generate reports. Managers can also add, edit, delete and restock products.
 
-The project demonstrates cloud engineering practices by using AWS services, Infrastructure-as-Code (IaC), monitoring, automation, and software development processes.
+The application uses a static HTML, CSS and JavaScript frontend connected to an API Gateway REST API. AWS Lambda handles the business logic, while DynamoDB stores the shared product, sales, activity and alert records used by every device.
+
+The project also demonstrates cloud engineering practices using AWS serverless services, Infrastructure-as-Code (IaC), API development, database management, monitoring, automation, testing, and software development processes.
 
 ## Project Objectives
 
-- Develop a scalable cloud-based retail management system.
-- Implement product and inventory management features.
-- Record and analyse daily sales transactions.
-- Provide automated low-stock notifications.
-- Apply AWS serverless architecture and DevOps practices.
-- Implement software testing and quality assurance processes.
-- Maintain project documentation using GitHub.
+* Develop a scalable cloud-based retail management system.
+* Implement product and inventory management features.
+* Record and analyse daily sales transactions.
+* Provide automated low-stock notifications.
+* Apply AWS serverless architecture and DevOps practices.
+* Implement software testing and quality assurance processes.
+* Maintain project documentation using GitHub.
 
-## Key Features
+## Main Features
 
-- Product management
-- Inventory tracking
-- Daily sales recording
-- Stock level monitoring
-- Automated low-stock alerts
-- Cloud-based data storage
-- Application monitoring and reporting
+- Product creation, viewing, editing and deletion
+- Product category, price, stock and reorder-level management
+- Sales recording with automatic stock reduction
+- Validation that prevents selling more stock than is available
+- Shared sales history stored in DynamoDB
+- Shared audit history with user, action and full date/time
+- Low-stock detection using each product's reorder level
+- Low-stock alert history and Amazon SNS email notifications
+- Fourteen-day demand insights and suggested restock quantities
+- Dashboard charts for sales activity and product information
+- Inventory and sales CSV exports
+- CloudWatch-based application monitoring
+- Responsive interface for desktop and mobile devices
+- Real Amazon Cognito sign-in with manager/staff role-based access control
+- Manager-controlled staff/manager account creation (Team page — Cognito emails the temporary password, no password ever passes through the app)
+- Server-side inventory/sales report generation, stored in S3 with a presigned download link
+- AI-trained demand recommendations (a Python Lambda fitting a linear trend per product), shown as decision support alongside the rule-based forecast
+
+## Current Authentication Status
+
+The frontend signs in against a real Amazon Cognito User Pool (`amazon-cognito-identity-js`, SRP flow) and attaches the ID token to every API request. The API Gateway Cognito authorizer is enabled on every route, so unauthenticated requests are rejected. Members of the `manager` Cognito group can create, update and delete products; everyone else authenticated (staff) can record sales and view inventory/alerts but not manage the product catalogue.
+
+Public self-sign-up is disabled by design — a manager creates staff/manager accounts from the app's Team page, which emails the new user a temporary password directly via Cognito (no password ever passes through the app or its API).
 
 ## System Architecture
 
-The system will use AWS serverless architecture:
+```text
+User's browser ── signs in ──> Amazon Cognito (User Pool)
+      |                              |
+      v                              v (ID token)
+Amazon S3 static website     Amazon API Gateway (Cognito authorizer on every route)
+                                      |
+                                      v
+                              AWS Lambda functions
+                                      |
+                      +---------------+---------------+
+                      |               |               |
+                      v               v               v
+              Amazon DynamoDB    Amazon SNS     Amazon CloudWatch
+              Shared business    Low-stock +    Logs, metrics,
+              data               error emails   monitoring
 
-User Interface  
-↓  
-API Gateway  
-↓  
-AWS Lambda  
-↓  
-DynamoDB Database  
-↓  
-CloudWatch Monitoring  
-↓  
-SNS Notifications
+Amazon EventBridge ── daily ──> Recommendation engine Lambda (Python) ── writes ──> DynamoDB
+```
 
-## AWS Services Used
+Low-stock alerts branch out from the sales flow above:
 
-| Service | Purpose |
-|---|---|
-| AWS Lambda | Backend processing and business logic |
-| API Gateway | API management |
-| DynamoDB | Store product, sales, and inventory data |
-| Amazon S3 | Store application files and documents |
-| IAM | Access control and security |
-| CloudWatch | Monitoring and logging |
-| SNS | Notification alerts |
-| AWS CDK | Infrastructure-as-Code deployment |
+```text
+Lambda (on low-stock sale)
+      ↓
+DynamoDB (alert history)
+      ↓
+SNS
+      ↓
+Email Notification
+```
 
-## Technologies
+## AWS Services
 
-- Python / TypeScript
-- AWS Cloud Services
+| AWS service | Purpose |
+| --- | --- |
+| Amazon S3 | Hosts the static frontend; stores generated CSV reports privately |
+| API Gateway | Provides the REST API used by the frontend |
+| AWS Lambda | Runs product, sales, activity, alert, inventory, reports, recommendation, user-management and monitoring logic (TypeScript, plus one Python function for the recommendation engine) |
+| DynamoDB | Stores products, sales, activities, low-stock alerts and AI recommendations |
+| Amazon SNS | Sends low-stock email notifications |
+| Amazon CloudWatch | Stores logs and frontend monitoring information |
+| Amazon EventBridge | Triggers the recommendation engine's daily training run |
+| Amazon Cognito | User directory, enforced manager/staff role-based authentication, and manager-controlled account creation |
+| AWS IAM | Controls permissions between AWS services |
+| AWS CDK | Defines and deploys the AWS infrastructure as code |
+
+## Technology Stack
+
+- HTML5 and CSS3
+- JavaScript ES modules
+- TypeScript and Node.js
 - AWS CDK
-- GitHub
-- Visual Studio Code
+- AWS SDK for JavaScript
+- Amazon API Gateway
+- AWS Lambda
+- Amazon DynamoDB
+- Amazon S3
+- Amazon SNS
+- Amazon CloudWatch
+- Amazon Cognito
+- Python (the demand recommendation engine's Lambda — numpy-based trend regression)
+- Amazon EventBridge
+- Git and GitHub
+
+## Frontend Structure
+
+| File | Responsibility |
+| --- | --- |
+| `frontend/index.html` | Defines the login screen, navigation, dashboard pages, forms and modals |
+| `frontend/style.css` | Controls the layout, responsive design, colours and component styling |
+| `frontend/script.js` | Loads the application after the HTML document is ready |
+| `frontend/js/app.js` | Starts the application and connects buttons, forms, login and navigation |
+| `frontend/js/auth.js` | Real Cognito sign-in/sign-out and mapping `cognito:groups` to the app's manager/staff role |
+| `frontend/js/actions.js` | Handles product forms, sales, restocking, data loading, staff account creation and CSV exports |
+| `frontend/js/api.js` | Sends requests to the API Gateway endpoints |
+| `frontend/js/config.js` | Contains application configuration and temporary runtime state |
+| `frontend/js/inventory.js` | Calculates stock status, sales totals and demand forecasts |
+| `frontend/js/render.js` | Renders dashboard pages, tables, charts, reports and demand insights |
+| `frontend/js/ui.js` | Controls modals, messages, navigation, loading states and role-based visibility |
+| `frontend/js/utils.js` | Contains reusable formatting, validation, HTML and CSV helpers |
+
+Persistent business information is loaded from AWS. The application no longer uses browser local storage for products, sales, activities or reorder levels.
+
+## Backend Structure
+
+| File | Responsibility |
+| --- | --- |
+| `inventory-handler.ts` | Creates, reads, updates and deletes products |
+| `sales-handler.ts` | Records sales, reduces stock and sends low-stock alerts |
+| `activity-handler.ts` | Stores and retrieves shared audit-history records |
+| `alerts-handler.ts` | Retrieves stored low-stock alerts |
+| `inventory-status-handler.ts` | Returns stock and low-stock information |
+| `forecast-handler.ts` | Computes each product's 14-day sales-velocity forecast |
+| `reports-handler.ts` | Generates an inventory/sales CSV, stores it in S3, returns a presigned download URL |
+| `recommendations-handler.ts` | Retrieves the AI-trained demand recommendations |
+| `users-handler.ts` | Manager-only: creates and lists staff/manager Cognito accounts |
+| `telemetry-handler.ts` | Records and retrieves application monitoring data |
+| `lambda-python/recommendation-engine/handler.py` | Python — fits a linear trend to each product's daily sales history on a schedule and writes the recommendation |
+| `lib/cdk-stack.ts` | Defines all AWS resources, permissions, API routes and deployment settings |
+
+## How Sales Work
+
+When a user records a sale:
+
+1. The frontend validates the product and quantity.
+2. `POST /sales` sends the request to API Gateway.
+3. `sales-handler.ts` loads the product from DynamoDB.
+4. The request is rejected if there is insufficient stock.
+5. A DynamoDB transaction reduces the stock and records the sale together.
+6. If the remaining stock is at or below the reorder level, an alert is stored and an SNS email is sent.
+7. The frontend reloads the shared products, sales and activity data.
+
+Using a DynamoDB transaction prevents a sale record from being stored without its matching stock update.
+
+## Demand Insight Calculation
+
+There are two separate, independent demand models — shown side by side on the Insights page.
+
+**Rule-based 14-day forecast** (`GET /forecast`, `forecast-handler.ts`) — not a machine-learning model. For each product:
+
+1. Totals the units sold during the previous 14 days.
+2. Calculates average daily sales:
+
+   ```text
+   average daily sales = units sold during 14 days / 14
+   ```
+
+3. Estimates the number of days the current stock will last.
+4. Calculates a target stock level using recent demand, a 15% safety buffer and the product's reorder level.
+5. Suggests the quantity required to reach that target.
+6. Ranks products so the most urgent restock requirement appears first.
+
+This runs server-side, so every device sees the same numbers rather than each computing its own.
+
+**AI demand recommendations** (`GET /recommendations`, a Python Lambda) — a genuine trained model: fits an ordinary-least-squares linear trend to each product's daily sales history (`numpy.polyfit`) on a daily schedule, labelling each product `Increasing`, `Decreasing`, `Stable`, or `Insufficient data` based on how much of the day-to-day variance the trend actually explains (R²), not just the raw slope. Always shown with its basis (days of history, R²) — decision support, not a directive. See [docs/architecture.md](docs/architecture.md#demand-recommendation-engine-fr-10) for the full mechanics.
+
+## Reports
+
+The Reports page summarises:
+
+- Number of products
+- Total units currently in stock
+- Products requiring attention
+- Estimated inventory value
+- Product availability
+- Recorded sales revenue
+
+Users can download:
+
+- Inventory status as CSV
+- Recorded sales history as CSV
+- A print-friendly demand insight summary
+
+These downloads are generated by the browser directly from the data already loaded, for an instant, no-network-round-trip export. Separately, `GET /reports?type=inventory|sales` (`reports-handler.ts`) generates the same kind of CSV server-side, stores it in a private S3 bucket, and returns a time-limited presigned download URL — a durable, shareable artifact rather than only a one-off browser download. The frontend doesn't call this endpoint yet; it's available as a backend capability.
+
+## API Reference
+
+The configured API base URL is:
+
+```text
+https://mrfuj9l955.execute-api.ap-southeast-2.amazonaws.com/prod
+```
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `/products` | Retrieve all products |
+| `POST` | `/products` | Create a product |
+| `GET` | `/products/{productId}` | Retrieve one product |
+| `PUT` | `/products/{productId}` | Update a product or apply a restock |
+| `DELETE` | `/products/{productId}` | Delete a product |
+| `GET` | `/sales` | Retrieve shared sales history |
+| `POST` | `/sales` | Record a sale and reduce stock |
+| `GET` | `/activities` | Retrieve recent shared audit history |
+| `POST` | `/activities` | Store an audit entry |
+| `GET` | `/inventory` | Retrieve stock status for all products |
+| `GET` | `/alerts` | Retrieve low-stock alert history |
+| `GET` | `/forecast` | Retrieve every product's 14-day sales-velocity forecast, ranked |
+| `GET` | `/forecast/{productId}` | Retrieve one product's forecast |
+| `GET` | `/reports` | Generate an inventory/sales CSV report, stored in S3, returned as a presigned URL |
+| `GET` | `/recommendations` | Retrieve AI-trained demand recommendations, ranked |
+| `GET` | `/users` | Retrieve the account directory (manager-only) |
+| `POST` | `/users` | Create a staff or manager account (manager-only) |
+| `GET` | `/telemetry` | Retrieve a CloudWatch monitoring summary |
+| `POST` | `/telemetry` | Record a frontend monitoring event |
+| `GET` | `/telemetry/events` | Retrieve recent monitoring events |
+
+See [docs/architecture.md](docs/architecture.md) for full request/response detail on each of these.
+
+### Example Product
+
+```json
+{
+  "productId": "P001",
+  "name": "Chicken Ramen Premium",
+  "category": "Pantry",
+  "price": 18.5,
+  "stock": 20,
+  "reorderThreshold": 10
+}
+```
+
+### Example Sale
+
+```json
+{
+  "productId": "P001",
+  "quantitySold": 3
+}
+```
+
+### Authentication
+
+Every endpoint requires a valid Cognito ID token in the `Authorization` header, enforced by the API Gateway Cognito authorizer. Accounts are provisioned by an admin/manager (no public self-signup). Members of the `manager` Cognito group can create, update and delete products; authenticated users outside that group (staff) can record sales and view inventory/alerts but cannot manage the product catalogue.
+
+## Installation and Local Frontend Testing
+
+Clone the repository and switch to the required branch:
+
+```bash
+git clone https://github.com/samipkafle/cloud-retail-inventory-system.git
+cd cloud-retail-inventory-system
+git switch <branch-name>
+```
+
+Serve the project through a local web server because the frontend uses JavaScript modules. For example, with the VS Code Live Server extension, open `frontend/index.html` using **Open with Live Server**.
+
+The local frontend still communicates with the deployed AWS API configured in `frontend/js/config.js`. Opening the file locally does not create a separate local database or Lambda backend.
+
+## CDK Validation and Deployment
+
+From the project root:
+
+```bash
+cd infrastructure/cdk
+npm install
+npm run build
+npm run cdk -- synth
+```
+
+Deploy only from an AWS account and region configured for this project:
+
+```bash
+npm run cdk -- deploy
+```
+
+The deployment updates the Lambda functions, API Gateway configuration, DynamoDB tables and S3-hosted frontend defined by the CDK stack. Team members should review and merge changes before deployment so one deployment does not accidentally replace another member's work.
 
 ## Development Process
 
 The project follows Agile software development practices:
 
-- Requirement analysis
-- System design
-- Development
-- Testing
-- Deployment
-- Documentation
+1. Requirement analysis
+2. System design
+3. Infrastructure setup
+4. Backend development
+5. API development
+6. Testing
+7. Monitoring implementation
+8. Deployment
+9. Documentation
 
-## Testing Approach
+## Testing
 
-The system will include:
+Current testing includes:
 
-- Unit testing
-- Integration testing
-- System testing
-- User Acceptance Testing (UAT)
+- Browser testing of the responsive frontend
+- API and integration testing against the deployed AWS services
+- Product CRUD validation
+- Sale and insufficient-stock validation
+- Cross-device sales and activity-history checks
+- Reorder-level and demand-forecast checks
+- SNS low-stock email testing
+- TypeScript compilation and CDK synthesis
 
-## Project Documentation
+Backend tests can be run from `infrastructure/cdk`:
 
-Documentation will include:
+```bash
+npm test
+```
 
-- System architecture
-- Requirements specification
-- Deployment guide
-- Test reports
-- User manual
-- Operational runbook
-
-## Team Project
-
-This project is developed as a group project as part of the Advanced Project Management unit.
+Postman is also used to test the REST API endpoints directly.
 
 ## Project Status
 
-Currently in the design and development phase.
+### Completed
+
+- [x] Responsive dashboard frontend
+- [x] Product CRUD operations
+- [x] Shared product and reorder-level storage
+- [x] Shared sales history with automatic stock reduction
+- [x] Shared activity and audit history
+- [x] Low-stock detection, alert storage and SNS email notifications
+- [x] Fourteen-day rule-based demand insights
+- [x] Dashboard charts and report summaries
+- [x] Inventory and sales CSV exports
+- [x] CloudWatch logging and frontend monitoring endpoints
+- [x] AWS CDK infrastructure and S3 frontend deployment
+- [x] Removal of browser local storage for business records
+- [x] Real Amazon Cognito sign-in with manager/staff role-based access control
+- [x] Backend forecast (FR-09), reports (FR-08), and demand recommendation engine (FR-10) endpoints
+- [x] Manager-controlled staff/manager account creation (Team page)
+
+### In Progress
+
+- [ ] Complete final integration and user acceptance testing
+
+### Possible Future Improvements
+
+- [ ] Host the frontend through HTTPS using CloudFront or another secure host
+- [ ] Extend the recommendation engine beyond a linear trend model (e.g. to capture seasonal/cyclical patterns)
+- [ ] Switch the frontend's report downloads to call the S3-backed `GET /reports` endpoint instead of generating CSVs client-side
+- [ ] Add automated deployment through a CI/CD pipeline
+
+## Documentation
+
+- [`docs/requirements.md`](docs/requirements.md) – functional and non-functional requirements and implementation status
+- [`docs/architecture.md`](docs/architecture.md) – AWS architecture and data flow
+- [`docs/testing.md`](docs/testing.md) – testing approach and evidence
+- [`frontend/README.md`](frontend/README.md) – frontend-specific instructions
+
+## Team Project
+
+This system is developed as a group project for the **Advanced Project Management** unit. Source code, infrastructure definitions and project documentation are maintained in GitHub.
+
+---
+
+**Project:** Cloud-Based Retail Inventory and Sales Monitoring System
+
+**Application name:** GreenLeaf Inventory
+
+**Architecture:** AWS Serverless
+
+**Development Approach:** Agile

@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="GreenLeaf Grocers inventory, sales and demand monitoring system"
+    />
+    <title>GreenLeaf Grocers Inventory System</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <svg class="icon-sprite" aria-hidden="true">
+      <symbol id="icon-leaf" viewBox="0 0 24 24">
+        <path d="M20 4C12 4 5 8 5 15c0 3 2 5 5 5 7 0 10-8 10-16Z" />
+        <path d="M5 20c3-6 7-9 13-13" />
+      </symbol>
+      <symbol id="icon-grid" viewBox="0 0 24 24">
+        <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" />
+      </symbol>
+      <symbol id="icon-box" viewBox="0 0 24 24">
+        <path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5zM12 12 4.3 7.7M12 12l7.7-4.3M12 12v9" />
+      </symbol>
+      <symbol id="icon-receipt" viewBox="0 0 24 24">
+        <path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h3" />
+      </symbol>
+      <symbol id="icon-bell" viewBox="0 0 24 24">
+        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
+      </symbol>
+      <symbol id="icon-spark" viewBox="0 0 24 24">
+        <path d="m12 3 1.4 4.1 4.1 1.4-4.1 1.4L12 14l-1.4-4.1-4.1-1.4 4.1-1.4zM19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8z" />
+      </symbol>
+      <symbol id="icon-chart" viewBox="0 0 24 24">
+        <path d="M4 19V9M10 19V5M16 19v-7M22 19H2" />
+      </symbol>
+      <symbol id="icon-search" viewBox="0 0 24 24">
+        <path d="m21 21-4.3-4.3M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4" />
+      </symbol>
+      <symbol id="icon-plus" viewBox="0 0 24 24">
+        <path d="M12 5v14M5 12h14" />
+      </symbol>
+      <symbol id="icon-arrow" viewBox="0 0 24 24">
+        <path d="M5 12h14m-6-6 6 6-6 6" />
+      </symbol>
+      <symbol id="icon-store" viewBox="0 0 24 24">
+        <path d="M3 9h18M5 9v11h14V9M4 4h16l1 5H3zM9 20v-6h6v6" />
+      </symbol>
+      <symbol id="icon-menu" viewBox="0 0 24 24">
+        <path d="M4 7h16M4 12h16M4 17h16" />
+      </symbol>
+      <symbol id="icon-close" viewBox="0 0 24 24">
+        <path d="m6 6 12 12M18 6 6 18" />
+      </symbol>
+      <symbol id="icon-logout" viewBox="0 0 24 24">
+        <path d="m10 17 5-5-5-5M15 12H3M14 4h6v16h-6" />
+      </symbol>
+      <symbol id="icon-download" viewBox="0 0 24 24">
+        <path d="M12 3v12m-5-5 5 5 5-5M5 21h14" />
+      </symbol>
+      <symbol id="icon-check" viewBox="0 0 24 24">
+        <path d="m5 12 4 4L19 6" />
+      </symbol>
+      <symbol id="icon-edit" viewBox="0 0 24 24">
+        <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" />
+      </symbol>
+      <symbol id="icon-trash" viewBox="0 0 24 24">
+        <path d="M4 7h16M9 7V4h6v3m3 0-1 14H7L6 7m4 4v6m4-6v6" />
+      </symbol>
+      <symbol id="icon-refresh" viewBox="0 0 24 24">
+        <path d="M20 7v5h-5M4 17v-5h5M6.1 9a7 7 0 0 1 11.7-2L20 12M4 12l2.2 5a7 7 0 0 0 11.7-2" />
+      </symbol>
+      <symbol id="icon-users" viewBox="0 0 24 24">
+        <path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 21c0-3.3 2.7-6 6-6s6 2.7 6 6M15.5 5.1a3 3 0 0 1 0 5.8M21 21c0-2.8-1.8-5.1-4.3-5.8" />
+      </symbol>
+      <symbol id="icon-cloud" viewBox="0 0 24 24">
+        <path d="M17.5 19H7a5 5 0 1 1 1.7-9.7A6 6 0 0 1 20 12a3.5 3.5 0 0 1-2.5 7Z" />
+      </symbol>
+    </svg>
+
+    <div id="loginView" class="login-view">
+      <section class="login-brand">
+        <div class="brand-lockup brand-lockup-light">
+          <span class="brand-mark"><svg><use href="#icon-leaf"></use></svg></span>
+          <span><strong>GreenLeaf</strong><small>Grocers</small></span>
+        </div>
+
+        <div class="login-hero">
+          <span class="eyebrow">Retail operations, simplified</span>
+          <h1>Every product.<br />Every sale.<br /><em>One clear view.</em></h1>
+          <p>
+            Monitor inventory, record daily sales and make smarter restocking
+            decisions from one secure operational workspace.
+          </p>
+          <div class="login-stats">
+            <div><strong>Real-time</strong><span>Stock visibility</span></div>
+            <div><strong>14-day</strong><span>Demand forecast</span></div>
+            <div><strong>AWS</strong><span>Serverless backend</span></div>
+          </div>
+        </div>
+
+        <p class="login-footnote">GreenLeaf prototype · No customer payment data stored</p>
+      </section>
+
+      <section class="login-panel">
+        <form id="loginForm" class="login-card">
+          <div class="mobile-brand brand-lockup">
+            <span class="brand-mark"><svg><use href="#icon-leaf"></use></svg></span>
+            <span><strong>GreenLeaf</strong><small>Grocers</small></span>
+          </div>
+
+          <span class="section-kicker">Welcome back</span>
+          <h2>Sign in to your workspace</h2>
+
+          <div id="roleSwitch" class="role-switch" aria-label="Choose a demo account">
+            <button type="button" class="active" data-role="manager">
+              <strong>Manager</strong><small>Full access</small>
+            </button>
+            <button type="button" data-role="staff">
+              <strong>Staff</strong><small>Daily operations</small>
+            </button>
+          </div>
+
+          <label>
+            Email address
+            <input id="loginEmail" type="email" value="manager@greenleaf.demo" required />
+          </label>
+          <label>
+            Password
+            <input id="loginPassword" type="password" value="Demo@123" minlength="4" required />
+          </label>
+
+          <p id="loginError" class="form-error" hidden></p>
+          <button id="loginButton" class="primary-button login-button" type="submit">
+            <span>Sign in as manager</span>
+            <svg><use href="#icon-arrow"></use></svg>
+          </button>
+        </form>
+      </section>
+    </div>
+
+    <div id="appShell" class="app-shell" hidden>
+      <aside id="sidebar" class="sidebar">
+        <div class="sidebar-head">
+          <div class="brand-lockup brand-lockup-light">
+            <span class="brand-mark"><svg><use href="#icon-leaf"></use></svg></span>
+            <span><strong>GreenLeaf</strong><small>Grocers</small></span>
+          </div>
+          <button id="closeSidebarButton" class="icon-button close-sidebar" type="button" aria-label="Close navigation">
+            <svg><use href="#icon-close"></use></svg>
+          </button>
+        </div>
+
+        <p class="nav-label">Workspace</p>
+        <nav id="mainNavigation">
+          <button class="nav-button active" type="button" data-page="overview" data-roles="manager,staff,maintainer">
+            <svg><use href="#icon-grid"></use></svg><span>Overview</span>
+          </button>
+          <button class="nav-button" type="button" data-page="inventory" data-roles="manager,staff">
+            <svg><use href="#icon-box"></use></svg><span>Inventory</span>
+          </button>
+          <button class="nav-button" type="button" data-page="sales" data-roles="manager,staff">
+            <svg><use href="#icon-receipt"></use></svg><span>Sales</span>
+          </button>
+          <button class="nav-button" type="button" data-page="alerts" data-roles="manager,staff">
+            <svg><use href="#icon-bell"></use></svg><span>Alerts</span><b id="navAlertCount">0</b>
+          </button>
+          <button class="nav-button" type="button" data-page="insights" data-roles="manager">
+            <svg><use href="#icon-spark"></use></svg><span>Demand insights</span>
+          </button>
+          <button class="nav-button" type="button" data-page="reports" data-roles="manager">
+            <svg><use href="#icon-chart"></use></svg><span>Reports</span>
+          </button>
+          <button class="nav-button" type="button" data-page="monitoring" data-roles="manager,maintainer">
+            <svg><use href="#icon-cloud"></use></svg><span>Monitoring</span>
+          </button>
+          <button class="nav-button" type="button" data-page="team" data-roles="manager">
+            <svg><use href="#icon-users"></use></svg><span>Team</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-info">
+          <span><svg><use href="#icon-spark"></use></svg> Smart forecast</span>
+          <strong>14-day planning</strong>
+          <p>Recommendations use shared sales recorded through AWS.</p>
+        </div>
+        <div class="sidebar-footer">
+          <span class="aws-mark">aws</span>
+          <span>Serverless backend<small>API Gateway · Lambda · DynamoDB</small></span>
+        </div>
+      </aside>
+      <button id="sidebarScrim" class="sidebar-scrim" type="button" aria-label="Close navigation" hidden></button>
+
+      <div class="main-shell">
+        <header class="topbar">
+          <button id="menuButton" class="icon-button menu-button" type="button" aria-label="Open navigation">
+            <svg><use href="#icon-menu"></use></svg>
+          </button>
+          <div class="workspace-name">
+            <svg><use href="#icon-store"></use></svg>
+            <strong>GreenLeaf Inventory</strong>
+          </div>
+          <button id="connectionButton" class="connection-status checking" type="button" title="Configure API">
+            <span class="status-dot"></span><span id="connectionText">Checking backend…</span>
+          </button>
+          <div class="topbar-right">
+            <button id="refreshButton" class="icon-button" type="button" aria-label="Refresh products" title="Refresh products">
+              <svg><use href="#icon-refresh"></use></svg>
+            </button>
+            <button id="topAlertButton" class="icon-button notification-button" type="button" aria-label="View alerts">
+              <svg><use href="#icon-bell"></use></svg><span id="topAlertCount">0</span>
+            </button>
+            <div class="user-summary">
+              <span id="userAvatar" class="avatar">VI</span>
+              <span><strong id="userName">Virasanh</strong><small id="userRole">Store Manager</small></span>
+            </div>
+            <button id="logoutButton" class="icon-button logout-button" type="button" aria-label="Sign out">
+              <svg><use href="#icon-logout"></use></svg>
+            </button>
+          </div>
+        </header>
+
+        <main class="page-content">
+          <section id="apiErrorPanel" class="api-error-panel" hidden>
+            <span class="api-error-icon"><svg><use href="#icon-cloud"></use></svg></span>
+            <div>
+              <strong>Unable to reach the AWS product API</strong>
+              <p id="apiErrorText">Check the API address and make sure CORS is enabled in API Gateway.</p>
+            </div>
+            <button id="retryApiButton" class="secondary-button" type="button">Retry</button>
+          </section>
+
+          <section id="overviewPage" class="page active-page" data-page="overview">
+            <div class="page-heading">
+              <div>
+                <p id="todayLabel">Retail operations</p>
+                <h1 id="greetingTitle">Good morning, Virasanh</h1>
+                <span>Here is what is happening across GreenLeaf today.</span>
+              </div>
+              <div class="heading-actions" data-roles="manager,staff">
+                <button class="secondary-button open-sale-button" type="button">
+                  <svg><use href="#icon-receipt"></use></svg>Record sale
+                </button>
+                <button class="primary-button open-product-button" type="button">
+                  <svg><use href="#icon-plus"></use></svg>Add product
+                </button>
+              </div>
+            </div>
+
+            <div class="metric-grid">
+              <article class="metric-card">
+                <div><span>Recorded revenue</span><strong id="revenueMetric">$0.00</strong><small>Sales saved in AWS DynamoDB</small></div>
+                <span class="metric-icon green"><svg><use href="#icon-chart"></use></svg></span>
+              </article>
+              <article class="metric-card">
+                <div><span>Items sold</span><strong id="itemsSoldMetric">0</strong><small>Last 14 days</small></div>
+                <span class="metric-icon blue"><svg><use href="#icon-receipt"></use></svg></span>
+              </article>
+              <article class="metric-card">
+                <div><span>Inventory value</span><strong id="inventoryValueMetric">$0.00</strong><small id="unitsMetric">0 units on hand</small></div>
+                <span class="metric-icon violet"><svg><use href="#icon-box"></use></svg></span>
+              </article>
+              <article class="metric-card">
+                <div><span>Needs attention</span><strong id="attentionMetric">0</strong><small>Low or out of stock</small></div>
+                <span class="metric-icon amber"><svg><use href="#icon-bell"></use></svg></span>
+              </article>
+            </div>
+
+            <div class="dashboard-grid">
+              <article class="content-card sales-performance">
+                <div class="card-head">
+                  <div><span class="section-kicker">Sales performance</span><h2>Revenue this week</h2></div>
+                  <span class="prototype-tag">Shared AWS sales</span>
+                </div>
+                <div class="chart-summary">
+                  <strong id="weekRevenue">$0.00</strong><span id="weekSaleCount">0 recorded sales</span>
+                </div>
+                <div id="weeklyBarChart" class="bar-chart" aria-label="Weekly revenue bar chart"></div>
+              </article>
+
+              <article class="content-card inventory-health">
+                <div class="card-head">
+                  <div><span class="section-kicker">Inventory health</span><h2>Stock status</h2></div>
+                  <button class="icon-button page-link" type="button" data-target-page="inventory" aria-label="Open inventory">
+                    <svg><use href="#icon-arrow"></use></svg>
+                  </button>
+                </div>
+                <div class="health-body">
+                  <div id="healthDonut" class="donut"><div><strong id="availabilityPercent">0%</strong><span>Available</span></div></div>
+                  <div class="health-legend">
+                    <span><i class="good"></i>In stock <b id="inStockCount">0</b></span>
+                    <span><i class="low"></i>Low stock <b id="lowStockCount">0</b></span>
+                    <span><i class="out"></i>Out of stock <b id="outStockCount">0</b></span>
+                  </div>
+                </div>
+                <button class="wide-text-button page-link" type="button" data-target-page="inventory">
+                  View complete inventory <svg><use href="#icon-arrow"></use></svg>
+                </button>
+              </article>
+
+              <article class="content-card forecast-card">
+                <span class="forecast-icon"><svg><use href="#icon-spark"></use></svg></span>
+                <span class="section-kicker">Smart restocking forecast</span>
+                <h2 id="forecastTitle">Record sales to build a forecast</h2>
+                <p id="forecastText">The recommendation uses stock levels and sales recorded during the last 14 days.</p>
+                <div class="forecast-meta">
+                  <span><small>Demand</small><strong id="forecastDemand">Waiting for data</strong></span>
+                  <span><small>Days remaining</small><strong id="forecastDays">—</strong></span>
+                  <span><small>Current stock</small><strong id="forecastStock">—</strong></span>
+                </div>
+                <button id="forecastActionButton" type="button" disabled>Create restock action <svg><use href="#icon-arrow"></use></svg></button>
+              </article>
+
+              <article class="content-card activity-card">
+                <div class="card-head">
+                  <div><span class="section-kicker">Live operations</span><h2>Recent activity</h2></div>
+                </div>
+                <div id="activityList" class="activity-list"></div>
+              </article>
+            </div>
+          </section>
+
+          <section id="inventoryPage" class="page" data-page="inventory">
+            <div class="page-heading">
+              <div><p>Product management</p><h1>Inventory</h1><span>Products are loaded from the AWS DynamoDB product API.</span></div>
+              <button class="primary-button open-product-button" type="button"><svg><use href="#icon-plus"></use></svg>Add product</button>
+            </div>
+            <div class="mini-stats">
+              <div><span>Total products</span><strong id="totalProductCount">0</strong></div>
+              <div><span>Units on hand</span><strong id="totalUnitCount">0</strong></div>
+              <div><span>Low stock</span><strong id="inventoryLowCount">0</strong></div>
+              <div><span>Out of stock</span><strong id="inventoryOutCount">0</strong></div>
+            </div>
+            <article class="content-card table-card">
+              <div class="table-tools">
+                <label class="search-box">
+                  <svg><use href="#icon-search"></use></svg>
+                  <input id="productSearch" type="search" placeholder="Search by product name or ID" />
+                </label>
+                <select id="stockFilter" aria-label="Filter by stock status">
+                  <option value="all">All statuses</option>
+                  <option value="in">In stock</option>
+                  <option value="low">Low stock</option>
+                  <option value="out">Out of stock</option>
+                </select>
+              </div>
+              <div class="table-scroll">
+                <table>
+                  <thead><tr><th>Product</th><th>Unit price</th><th>Stock</th><th>Reorder at</th><th>Status</th><th>Actions</th></tr></thead>
+                  <tbody id="productTableBody"></tbody>
+                </table>
+              </div>
+              <div id="productEmptyState" class="empty-state" hidden>
+                <svg><use href="#icon-search"></use></svg><strong>No products found</strong><span>Try changing the search or filter.</span>
+              </div>
+              <div class="table-footer"><span id="tableResultCount">Showing 0 products</span><span id="tableSourceLabel">AWS product API</span></div>
+            </article>
+          </section>
+
+          <section id="salesPage" class="page" data-page="sales">
+            <div class="page-heading">
+              <div><p>Sales recording</p><h1>Sales</h1><span>Each sale is recorded through the sales API, which reduces stock and raises low-stock alerts.</span></div>
+              <button class="primary-button open-sale-button" type="button"><svg><use href="#icon-plus"></use></svg>Record sale</button>
+            </div>
+            <div class="metric-grid">
+              <article class="metric-card"><div><span>Revenue recorded</span><strong id="salesRevenueMetric">$0.00</strong><small>Shared AWS history</small></div><span class="metric-icon green"><svg><use href="#icon-chart"></use></svg></span></article>
+              <article class="metric-card"><div><span>Transactions</span><strong id="transactionMetric">0</strong><small>Shared sales history</small></div><span class="metric-icon blue"><svg><use href="#icon-receipt"></use></svg></span></article>
+              <article class="metric-card"><div><span>Items sold</span><strong id="salesItemsMetric">0</strong><small>Automatic stock deduction</small></div><span class="metric-icon violet"><svg><use href="#icon-box"></use></svg></span></article>
+              <article class="metric-card"><div><span>Average sale</span><strong id="averageSaleMetric">$0.00</strong><small>Recorded transactions</small></div><span class="metric-icon amber"><svg><use href="#icon-spark"></use></svg></span></article>
+            </div>
+            <div class="two-column">
+              <article class="content-card sales-chart-card">
+                <div class="card-head"><div><span class="section-kicker">Last seven days</span><h2>Sales activity</h2></div></div>
+                <div id="salesBarChart" class="hour-chart"></div>
+              </article>
+              <article class="content-card transaction-card">
+                <div class="card-head"><div><span class="section-kicker">Transaction log</span><h2>Recent sales</h2></div></div>
+                <div id="transactionList" class="transaction-list"></div>
+              </article>
+            </div>
+            <p class="integration-note"><strong>Backend note:</strong> sales are recorded and loaded through the AWS <code>/sales</code> endpoint, which updates DynamoDB stock, stores shared transaction history and raises low-stock alerts.</p>
+          </section>
+
+          <section id="alertsPage" class="page" data-page="alerts">
+            <div class="page-heading">
+              <div><p>Inventory monitoring</p><h1>Alerts</h1><span>Products at or below their reorder level need attention.</span></div>
+              <span class="alert-count"><svg><use href="#icon-bell"></use></svg><span id="activeAlertLabel">0 active alerts</span></span>
+            </div>
+            <div class="alert-layout">
+              <div id="alertList" class="content-card alert-list"></div>
+              <aside class="content-card alert-guide">
+                <span class="section-kicker">Response guide</span><h2>What to do next</h2>
+                <ol>
+                  <li><span>1</span><div><strong>Check recent demand</strong><p>Review sales velocity and current stock.</p></div></li>
+                  <li><span>2</span><div><strong>Create restock action</strong><p>Increase the product stock using the update API.</p></div></li>
+                  <li><span>3</span><div><strong>Confirm inventory</strong><p>The alert clears when stock moves above the reorder level.</p></div></li>
+                </ol>
+              </aside>
+            </div>
+          </section>
+
+          <section id="insightsPage" class="page" data-page="insights">
+            <div class="page-heading">
+              <div><p>Decision support</p><h1>Demand insights</h1><span>Recommendations use stock and shared AWS sales from the last 14 days.</span></div>
+              <span class="model-badge"><svg><use href="#icon-spark"></use></svg>14-day forecast</span>
+            </div>
+            <section id="insightHero" class="insight-hero"></section>
+            <div id="recommendationGrid" class="recommendation-grid"></div>
+            <article class="content-card season-panel">
+              <div><span class="season-icon"><svg><use href="#icon-chart"></use></svg></span><span class="section-kicker">Weekly and seasonal view</span><h2>Build a stronger forecast over time</h2><p>Continue recording sales so the prototype can compare fast-moving and slow-moving products.</p></div>
+              <div id="seasonBars" class="season-bars"></div>
+            </article>
+
+            <div class="page-heading ai-heading">
+              <div><p>Machine learning · decision support</p><h1>AI demand recommendations</h1><span>A trend model reviews each product's daily sales history — not a directive, always shown with its basis so a manager can judge and override it.</span></div>
+              <span class="model-badge ai-badge"><svg><use href="#icon-spark"></use></svg>Linear trend model</span>
+            </div>
+            <div id="aiRecommendationList" class="ai-recommendation-list"></div>
+          </section>
+
+          <section id="reportsPage" class="page" data-page="reports">
+            <div class="page-heading">
+              <div><p>Business reporting</p><h1>Reports</h1><span>Review operational figures and export the live product inventory.</span></div>
+              <button id="exportInventoryButton" class="primary-button" type="button"><svg><use href="#icon-download"></use></svg>Export inventory CSV</button>
+            </div>
+            <div class="report-grid">
+              <article class="report-feature">
+                <span class="section-kicker">Operations summary</span>
+                <h2 id="reportHeadline">Inventory report is ready</h2>
+                <p id="reportSummary">Connect the AWS API to calculate current stock performance.</p>
+                <div>
+                  <span><small>Inventory value</small><strong id="reportInventoryValue">$0.00</strong></span>
+                  <span><small>Availability</small><strong id="reportAvailability">0%</strong></span>
+                  <span><small>Recorded sales</small><strong id="reportSalesValue">$0.00</strong></span>
+                </div>
+              </article>
+              <article class="content-card report-list">
+                <div class="card-head"><div><span class="section-kicker">Download centre</span><h2>Available reports</h2></div></div>
+                <button id="downloadProductsReport" type="button"><span class="report-doc"><svg><use href="#icon-box"></use></svg></span><span><strong>Inventory status report</strong><small>Live product data</small></span><svg><use href="#icon-download"></use></svg></button>
+                <button id="downloadSalesReport" type="button"><span class="report-doc"><svg><use href="#icon-receipt"></use></svg></span><span><strong>Recorded sales report</strong><small>Shared AWS transaction history</small></span><svg><use href="#icon-download"></use></svg></button>
+                <button id="printInsightReport" type="button"><span class="report-doc"><svg><use href="#icon-spark"></use></svg></span><span><strong>Demand insight summary</strong><small>Print-friendly view</small></span><svg><use href="#icon-download"></use></svg></button>
+              </article>
+            </div>
+            <article class="content-card audit-panel">
+              <div class="card-head"><div><span class="section-kicker">Control and traceability</span><h2>Recent audit log</h2></div><span class="prototype-tag">Shared AWS records</span></div>
+              <div id="auditRows" class="audit-rows"></div>
+            </article>
+          </section>
+
+          <section id="monitoringPage" class="page" data-page="monitoring">
+            <div class="page-heading"><div><p>System operations</p><h1>Monitoring</h1><span>Frontend connection checks for the AWS serverless backend.</span></div><button id="runHealthCheckButton" class="primary-button" type="button"><svg><use href="#icon-refresh"></use></svg>Run health check</button></div>
+            <div class="metric-grid">
+              <article class="metric-card"><div><span>API status</span><strong id="monitorApiStatus">Checking</strong><small id="monitorApiDetail">Product endpoint</small></div><span class="metric-icon green"><svg><use href="#icon-cloud"></use></svg></span></article>
+              <article class="metric-card"><div><span>Response time</span><strong id="monitorResponseTime">—</strong><small>Latest GET /products</small></div><span class="metric-icon blue"><svg><use href="#icon-chart"></use></svg></span></article>
+              <article class="metric-card"><div><span>Products returned</span><strong id="monitorProductCount">0</strong><small>DynamoDB records</small></div><span class="metric-icon violet"><svg><use href="#icon-box"></use></svg></span></article>
+              <article class="metric-card"><div><span>Last checked</span><strong id="monitorLastCheck">—</strong><small>Local browser time</small></div><span class="metric-icon amber"><svg><use href="#icon-refresh"></use></svg></span></article>
+            </div>
+            <article class="content-card monitoring-card">
+              <div class="card-head"><div><span class="section-kicker">Connection events</span><h2>Frontend health log</h2></div><small>This browser tab only</small></div>
+              <div id="monitorLog" class="monitor-log"></div>
+            </article>
+
+            <article class="content-card monitoring-card">
+              <div class="card-head"><div><span class="section-kicker">CloudWatch</span><h2>Aggregated frontend health</h2><span id="telemetrySummaryWindow">All sessions · last 60 minutes</span></div><button id="refreshTelemetryButton" class="secondary-button" type="button"><svg><use href="#icon-refresh"></use></svg>Refresh</button></div>
+              <div class="metric-grid">
+                <article class="metric-card"><div><span>Errors</span><strong id="telemetryErrorCount">—</strong><small>FrontendErrorCount</small></div><span class="metric-icon amber"><svg><use href="#icon-bell"></use></svg></span></article>
+                <article class="metric-card"><div><span>Successful events</span><strong id="telemetrySuccessCount">—</strong><small>FrontendSuccessCount</small></div><span class="metric-icon green"><svg><use href="#icon-check"></use></svg></span></article>
+                <article class="metric-card"><div><span>Avg response time</span><strong id="telemetryAvgResponse">—</strong><small>FrontendResponseTime</small></div><span class="metric-icon blue"><svg><use href="#icon-chart"></use></svg></span></article>
+              </div>
+              <p id="telemetrySummaryNote" class="integration-note"></p>
+            </article>
+
+            <article class="content-card monitoring-card">
+              <div class="card-head"><div><span class="section-kicker">CloudWatch Logs Insights</span><h2>Recent frontend events</h2></div><small>All sessions · last 24 hours</small></div>
+              <div id="telemetryEventLog" class="monitor-log"></div>
+              <p id="telemetryEventsNote" class="integration-note"></p>
+            </article>
+          </section>
+
+          <section id="teamPage" class="page" data-page="team">
+            <div class="page-heading">
+              <div><p>Access control</p><h1>Team</h1><span>Create staff and manager accounts. New accounts get an emailed temporary password from Cognito — no password ever passes through this app.</span></div>
+            </div>
+            <article class="content-card team-form-card">
+              <div class="card-head"><div><span class="section-kicker">Add an account</span><h2>Create a staff or manager sign-in</h2></div></div>
+              <form id="createUserForm" class="modal-form team-form">
+                <label>Email address<input id="newUserEmailInput" name="email" type="email" placeholder="name@greenleaf.demo" required /></label>
+                <label>Role
+                  <select id="newUserRoleInput" name="role">
+                    <option value="staff">Staff — record sales, view inventory/alerts</option>
+                    <option value="manager">Manager — full access, including managing products and accounts</option>
+                  </select>
+                </label>
+                <button id="createUserButton" class="primary-button" type="submit"><svg><use href="#icon-plus"></use></svg>Create account</button>
+                <p id="createUserError" class="form-error" hidden></p>
+                <p id="createUserSuccess" class="form-success" hidden></p>
+              </form>
+            </article>
+            <article class="content-card team-list-card">
+              <div class="card-head"><div><span class="section-kicker">Directory</span><h2>Existing accounts</h2></div><button id="refreshUsersButton" class="secondary-button" type="button"><svg><use href="#icon-refresh"></use></svg>Refresh</button></div>
+              <div id="userRows" class="user-rows"></div>
+            </article>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <div id="loadingOverlay" class="loading-overlay" hidden>
+      <span class="spinner"></span><p id="loadingText">Loading products…</p>
+    </div>
+
+    <div id="productModal" class="modal-backdrop" hidden>
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="productModalTitle">
+        <div class="modal-head">
+          <div><span>Product management</span><h2 id="productModalTitle">Add a new product</h2></div>
+          <button class="icon-button modal-close-button" type="button" data-close-modal="productModal" aria-label="Close"><svg><use href="#icon-close"></use></svg></button>
+        </div>
+        <form id="productForm" class="modal-form">
+          <label>Product ID<input id="productIdInput" name="productId" placeholder="P001" maxlength="40" required /></label>
+          <label>Product name<input id="productNameInput" name="name" placeholder="Fresh Milk" maxlength="100" required /></label>
+          <div class="form-row">
+            <label>Unit price (AUD)<input id="productPriceInput" name="price" type="number" min="0" step="0.01" placeholder="0.00" required /></label>
+            <label>Stock quantity<input id="productStockInput" name="stock" type="number" min="0" step="1" value="0" required /></label>
+          </div>
+          <div class="form-row local-fields">
+            <label>Category <small>Saved with this product in AWS</small><select id="productCategoryInput" name="category"><option>Dairy</option><option>Bakery</option><option>Produce</option><option>Pantry</option><option>Beverages</option><option>Household</option><option>Other</option></select></label>
+            <label>Reorder level <small id="productReorderStorageHint">Saved with this product in AWS</small><input id="productReorderInput" name="reorderLevel" type="number" min="0" step="1" value="5" required /></label>
+          </div>
+          <p id="productFormError" class="form-error" hidden></p>
+          <div class="modal-actions"><button class="secondary-button modal-close-button" type="button" data-close-modal="productModal">Cancel</button><button id="saveProductButton" class="primary-button" type="submit">Add product</button></div>
+        </form>
+      </section>
+    </div>
+
+    <div id="saleModal" class="modal-backdrop" hidden>
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="saleModalTitle">
+        <div class="modal-head">
+          <div><span>Sales recording</span><h2 id="saleModalTitle">Record a sale</h2></div>
+          <button class="icon-button modal-close-button" type="button" data-close-modal="saleModal" aria-label="Close"><svg><use href="#icon-close"></use></svg></button>
+        </div>
+        <form id="saleForm" class="modal-form">
+          <label>Product<select id="saleProductInput" name="productId" required></select></label>
+          <label>Quantity sold<input id="saleQuantityInput" name="quantity" type="number" min="1" step="1" value="1" required /></label>
+          <div id="saleStockHint" class="sale-hint"><svg><use href="#icon-receipt"></use></svg><span>Select a product to see its available stock.</span></div>
+          <p id="saleFormError" class="form-error" hidden></p>
+          <div class="modal-actions"><button class="secondary-button modal-close-button" type="button" data-close-modal="saleModal">Cancel</button><button class="primary-button" type="submit">Record sale</button></div>
+        </form>
+      </section>
+    </div>
+
+    <div id="apiModal" class="modal-backdrop" hidden>
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="apiModalTitle">
+        <div class="modal-head">
+          <div><span>Backend connection</span><h2 id="apiModalTitle">Configure product API</h2></div>
+          <button class="icon-button modal-close-button" type="button" data-close-modal="apiModal" aria-label="Close"><svg><use href="#icon-close"></use></svg></button>
+        </div>
+        <form id="apiForm" class="modal-form">
+          <label>API Gateway base URL<input id="apiUrlInput" name="apiUrl" type="url" required /></label>
+          <p class="field-help">Enter the stage URL without <code>/products</code>. Example: <code>https://abc.execute-api.ap-southeast-2.amazonaws.com/prod</code></p>
+          <p id="apiFormError" class="form-error" hidden></p>
+          <div class="modal-actions"><button class="secondary-button modal-close-button" type="button" data-close-modal="apiModal">Cancel</button><button class="primary-button" type="submit">Connect</button></div>
+        </form>
+      </section>
+    </div>
+
+    <div id="confirmModal" class="modal-backdrop" hidden>
+      <section class="modal confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+        <span class="danger-icon"><svg><use href="#icon-trash"></use></svg></span>
+        <h2 id="confirmTitle">Delete product?</h2>
+        <p id="confirmText">This removes the product from DynamoDB and cannot be undone.</p>
+        <div class="modal-actions"><button class="secondary-button modal-close-button" type="button" data-close-modal="confirmModal">Cancel</button><button id="confirmDeleteButton" class="danger-button" type="button">Delete product</button></div>
+      </section>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden>
+      <span><svg><use href="#icon-check"></use></svg></span><p id="toastText"></p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.20/dist/amazon-cognito-identity.min.js"></script>
+    <script type="module" src="script.js"></script>
+  </body>
+</html>

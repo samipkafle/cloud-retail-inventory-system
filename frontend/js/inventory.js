@@ -1,0 +1,117 @@
+import { state } from "./config.js";
+import { inferCategory, normaliseActivity } from "./utils.js";
+import { recordActivity } from "./api.js";
+
+// Gets category and reorder data from the product loaded from AWS.
+export function getMetadata(productId, productName = "") {
+  const product = state.products.find((item) => item.productId === productId);
+  const reorderLevel = product?.reorderThreshold ?? 0;
+
+  return {
+    category: product?.category || inferCategory(productName || product?.name),
+    reorderLevel: Math.max(0, Number(reorderLevel) || 0),
+  };
+}
+
+// Determines whether a product is in stock, low in stock or out of stock.
+export function getStockStatus(product) {
+  const reorderLevel = getMetadata(product.productId, product.name).reorderLevel;
+
+  if (product.stock <= 0) {
+    return { key: "out", label: "Out of stock", className: "status-out" };
+  }
+
+  if (product.stock <= reorderLevel) {
+    return { key: "low", label: "Low stock", className: "status-low" };
+  }
+
+  return { key: "in", label: "In stock", className: "status-good" };
+}
+
+// Calculates the starting date for a selected number of recent days.
+export function daysAgoStart(days) {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() - (days - 1));
+  return date;
+}
+
+// Returns sales recorded within the selected number of recent days.
+export function recentSales(days = 14) {
+  const start = daysAgoStart(days);
+  return state.sales.filter((sale) => new Date(sale.createdAt) >= start);
+}
+
+// Groups recorded sales by day and calculates daily totals.
+export function groupSalesByDay(days = 7) {
+  const grouped = [];
+
+  for (let offset = days - 1; offset >= 0; offset -= 1) {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() - offset);
+
+    const next = new Date(date);
+    next.setDate(next.getDate() + 1);
+
+    const sales = state.sales.filter((sale) => {
+      const createdAt = new Date(sale.createdAt);
+      return createdAt >= date && createdAt < next;
+    });
+
+    grouped.push({
+      date,
+      revenue: sales.reduce((sum, sale) => sum + Number(sale.total || 0), 0),
+      quantity: sales.reduce((sum, sale) => sum + Number(sale.quantity || 0), 0),
+      count: sales.length,
+    });
+  }
+
+  return grouped;
+}
+
+// Calculates product counts, stock quantities and inventory value.
+export function inventoryTotals() {
+  const totals = {
+    products: state.products.length,
+    units: 0,
+    value: 0,
+    in: 0,
+    low: 0,
+    out: 0,
+  };
+
+  state.products.forEach((product) => {
+    totals.units += product.stock;
+    totals.value += product.price * product.stock;
+    totals[getStockStatus(product).key] += 1;
+  });
+
+  return totals;
+}
+
+// Adds an action to the shared AWS audit history.
+export async function addActivity(type, title, detail, status = "Completed") {
+  const activity = {
+    id: `ACT-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`,
+    type,
+    title,
+    detail,
+    status,
+    user: state.user.name,
+    createdAt: new Date().toISOString(),
+  };
+
+  try {
+    const response = await recordActivity(activity);
+    const sharedActivity = normaliseActivity(response?.activity || activity);
+    state.activities = [
+      sharedActivity,
+      ...state.activities.filter((item) => item.id !== sharedActivity.id),
+    ].slice(0, 100);
+    return true;
+  } catch (error) {
+    console.error("Unable to share audit activity:", error);
+    return false;
+  }
+}

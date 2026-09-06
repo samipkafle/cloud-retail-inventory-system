@@ -1,0 +1,17 @@
+// Runs before any test module is required (see jest.config.js
+// setupFiles), so handlers that read table/topic names into
+// module-level consts at import time see these values.
+process.env.TABLE_NAME = 'TestInventory';
+process.env.PRODUCTS_TABLE_NAME = 'TestInventory';
+process.env.SALES_TABLE_NAME = 'TestSales';
+process.env.SALES_INDEX_NAME = 'productId-soldAt-index';
+process.env.REPORTS_BUCKET_NAME = 'test-reports-bucket';
+process.env.RECOMMENDATIONS_TABLE_NAME = 'TestRecommendations';
+process.env.ALERTS_TABLE_NAME = 'TestAlerts';
+process.env.ACTIVITIES_TABLE_NAME = 'TestActivities';
+process.env.LOW_STOCK_TOPIC_ARN = 'arn:aws:sns:ap-southeast-2:123456789012:TestTopic';
+process.env.METRIC_NAMESPACE = 'Test/Frontend';
+process.env.AWS_LAMBDA_FUNCTION_NAME = 'TestTelemetryLambda';
+process.env.AUTH_ENABLED = 'true';
+process.env.USER_POOL_ID = 'ap-southeast-2_TestPool';
+process.env.MANAGER_GROUP_NAME = 'manager';

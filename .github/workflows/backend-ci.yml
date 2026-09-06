@@ -1,0 +1,61 @@
+name: Backend CI
+
+on:
+  pull_request:
+    paths:
+      - "infrastructure/cdk/**"
+      - ".github/workflows/backend-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "infrastructure/cdk/**"
+      - ".github/workflows/backend-ci.yml"
+
+jobs:
+  test-and-synth:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infrastructure/cdk
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: infrastructure/cdk/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run build
+
+      - name: Run Jest tests
+        run: npm test -- --ci
+
+      - name: cdk synth
+        run: npx cdk synth --quiet
+
+  recommendation-engine-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infrastructure/cdk/lambda-python/recommendation-engine
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: infrastructure/cdk/lambda-python/recommendation-engine/requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run pytest
+        run: pytest -v
