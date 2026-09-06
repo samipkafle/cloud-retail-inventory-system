@@ -36,6 +36,17 @@ function forbidden() {
   };
 }
 
+// Mirrors the AUTH_ENABLED switch in cdk-stack.ts: while auth is off, the
+// API Gateway authorizer never runs and event.requestContext.authorizer is
+// undefined, so isManager() would reject every request. Returns a 403
+// response to short-circuit on, or null to continue.
+function requireManager(event: any) {
+  if (process.env.AUTH_ENABLED !== 'true') {
+    return null;
+  }
+  return isManager(event) ? null : forbidden();
+}
+
 export const handler = async (event: any) => {
   try {
     const method = event.httpMethod;
@@ -43,13 +54,10 @@ export const handler = async (event: any) => {
 
     // POST /products
     if (method === 'POST') {
-      // TEMP: manager check disabled while Cognito auth is off in
-      // cdk-stack.ts — event.requestContext.authorizer is always undefined
-      // without it, so isManager() would reject every request. Restore
-      // alongside the Cognito authorizer before demo/submission.
-      // if (!isManager(event)) {
-      //   return forbidden();
-      // }
+      const authError = requireManager(event);
+      if (authError) {
+        return authError;
+      }
 
       const body = JSON.parse(event.body || '{}');
 
@@ -172,10 +180,10 @@ export const handler = async (event: any) => {
 
     // PUT /products/{productId}
     if (method === 'PUT' && productId) {
-      // TEMP: manager check disabled while Cognito auth is off — see POST handler above.
-      // if (!isManager(event)) {
-      //   return forbidden();
-      // }
+      const authError = requireManager(event);
+      if (authError) {
+        return authError;
+      }
 
       const body = JSON.parse(event.body || '{}');
 
@@ -281,10 +289,10 @@ export const handler = async (event: any) => {
 
     // DELETE /products/{productId}
     if (method === 'DELETE' && productId) {
-      // TEMP: manager check disabled while Cognito auth is off — see POST handler above.
-      // if (!isManager(event)) {
-      //   return forbidden();
-      // }
+      const authError = requireManager(event);
+      if (authError) {
+        return authError;
+      }
 
       await client.send(
         new DeleteItemCommand({

@@ -135,16 +135,17 @@ export class CdkStack extends cdk.Stack {
       groupName: 'manager',
     });
 
-    // TEMP: unused while auth is disabled below (CDK synth rejects an
-    // authorizer that isn't attached to any method on the RestApi).
-    // Restore alongside authOptions before demo/submission.
-    // const apiAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(
-    //   this,
-    //   'ApiAuthorizer',
-    //   {
-    //     cognitoUserPools: [userPool],
-    //   }
-    // );
+    // Single switch for FR-01 enforcement. Flip to true once the frontend
+    // has real Cognito sign-in wired up (it currently only has a prototype
+    // role selector and never attaches an ID token to API requests) —
+    // enabling this before then will make every API call 401.
+    const AUTH_ENABLED = false;
+
+    const apiAuthorizer = AUTH_ENABLED
+      ? new apigateway.CognitoUserPoolsAuthorizer(this, 'ApiAuthorizer', {
+          cognitoUserPools: [userPool],
+        })
+      : undefined;
 
     // Lambda Function
     const inventoryLambda = new lambdaNodejs.NodejsFunction(
@@ -163,6 +164,7 @@ export class CdkStack extends cdk.Stack {
 
         environment: {
           TABLE_NAME: inventoryTable.tableName,
+          AUTH_ENABLED: String(AUTH_ENABLED),
         },
       }
     );
@@ -358,13 +360,16 @@ export class CdkStack extends cdk.Stack {
       },
     });
 
-    // Every route requires a valid Cognito ID token (FR-01)
-    // TEMP: auth disabled for testing — restore COGNITO authorizer before demo/submission.
-    const authOptions: apigateway.MethodOptions = {
-      // authorizer: apiAuthorizer, // uncomment apiAuthorizer above too
-      // authorizationType: apigateway.AuthorizationType.COGNITO,
-      authorizationType: apigateway.AuthorizationType.NONE,
-    };
+    // Every route requires a valid Cognito ID token once AUTH_ENABLED is
+    // flipped on above (FR-01).
+    const authOptions: apigateway.MethodOptions = AUTH_ENABLED
+      ? {
+          authorizer: apiAuthorizer,
+          authorizationType: apigateway.AuthorizationType.COGNITO,
+        }
+      : {
+          authorizationType: apigateway.AuthorizationType.NONE,
+        };
 
     // /products
     const products = api.root.addResource('products');

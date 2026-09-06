@@ -6,18 +6,18 @@ Source of truth: the NIT6150 System Analysis and Design (SAD) Report (approved 1
 
 | ID | Requirement | Priority | Status |
 | --- | --- | --- | --- |
-| FR-01 | Authenticate users and apply role-based access | Must | Implemented — Cognito User Pool authorizer required on every route; a `manager` Cognito group gates product create/update/delete (staff can record sales and view inventory/alerts but not manage the catalogue) |
+| FR-01 | Authenticate users and apply role-based access | Must | Scaffolded, not enforced — Cognito User Pool, client and `manager` group are provisioned, and the API Gateway authorizer plus the handler's manager-group check are fully implemented but gated behind a single `AUTH_ENABLED` switch in `cdk-stack.ts` (currently `false`). Not yet flipped on because the frontend login is still a prototype role selector that never attaches a Cognito ID token to requests — enabling the authorizer first would 401 every API call |
 | FR-02 | Create, edit, archive, search and view products | Must | Implemented (`/products` CRUD) |
 | FR-03 | Record daily sales with product, quantity, price and timestamp | Must | Implemented (`POST /sales`) |
 | FR-04 | Automatically update inventory after each valid sale | Must | Implemented (`POST /sales`) |
 | FR-05 | Reject sales that exceed available stock | Must | Implemented (`POST /sales`, conditional update) |
 | FR-06 | Display current stock and low-stock products | Must | Implemented (`GET /inventory` — returns each product's stock, threshold, OK/LOW status, and a below-threshold count) |
 | FR-07 | Publish low-stock notifications and store alert history | Must | Implemented — alert history is written on each sale and readable via `GET /alerts`; an SNS topic (`RetailLowStockAlerts`) emails a low-stock notification whenever an alert is raised |
-| FR-08 | Generate sales reports and export report files | Should | Not started |
-| FR-09 | Calculate smart reorder quantities using 14-day sales velocity | Must | Not started |
-| FR-10 | Train and display demand recommendations using historical sales patterns | Must | Not started |
-| FR-11 | Provide dashboard charts for sales, category share and product trends | Should | Not started |
-| FR-12 | Record logs and operational events for monitoring | Should | Partially implemented (default Lambda/CloudWatch logging only) |
+| FR-08 | Generate sales reports and export report files | Should | Partially implemented — the Reports page summarises inventory/sales and lets a user download inventory and sales history as CSV, but generation happens client-side in the browser from data already in memory; there is no `GET /reports` endpoint and files are not stored in S3 |
+| FR-09 | Calculate smart reorder quantities using 14-day sales velocity | Must | Partially implemented — the 14-day velocity calculation, safety buffer and suggested restock quantity run client-side in `frontend/js/inventory.js`; there is no backend `GET /forecast/{productId}` endpoint, so the figures aren't shared/consistent across a Lambda-computed source of truth |
+| FR-10 | Train and display demand recommendations using historical sales patterns | Must | Not started — the "demand insights" shown today are the rule-based FR-09 forecast, not a trained model. No Python/scikit-learn Lambda, no EventBridge Scheduler job, and no `Recommendation` DynamoDB table exist yet |
+| FR-11 | Provide dashboard charts for sales, category share and product trends | Should | Implemented — dashboard charts are rendered client-side from the shared AWS data (`frontend/js/render.js`) |
+| FR-12 | Record logs and operational events for monitoring | Should | Partially implemented — default Lambda/CloudWatch logging, plus a dedicated telemetry API (`POST /telemetry`, `GET /telemetry`, `GET /telemetry/events`) that records frontend health/error events as CloudWatch custom metrics, with a CloudWatch alarm on repeated frontend errors |
 
 ## Deviations from the SAD Report data design
 
@@ -34,3 +34,13 @@ Section 4 (Figure 1) documents `Alert` as `alertId (PK)`, `productId (FK)` only,
 ### Sales table — added GSI
 
 Section 4's Sale entity table lists only the base attributes, but the accompanying prose explains that `soldAt` is stored as ISO 8601 specifically "so that both the smart restocking forecast (14-day sales velocity) and the recommendation engine... can filter and sort chronologically." Implementing that access pattern requires a secondary index, not just the attribute. The CDK stack adds a `productId`/`soldAt` Global Secondary Index (`productId-soldAt-index`) on the Sales table to support querying a single product's sales history in chronological order.
+
+## Deviations from the SAD Report technology stack
+
+### Frontend framework
+
+The SAD report specifies a React SPA for the frontend. The implemented frontend is static HTML/CSS with vanilla JavaScript ES modules (`frontend/index.html`, `frontend/style.css`, `frontend/js/*.js`), still hosted on S3 as designed. Functionality (dashboard, product/sales/alert workflows, charts, CSV export) matches the SAD wireframes; the deviation is the implementation technology, not the scope.
+
+### Forecast and reporting run client-side, not as dedicated Lambdas
+
+FR-09's 14-day sales-velocity forecast and FR-08's CSV export are implemented as client-side JavaScript (`frontend/js/inventory.js`) rather than the SAD-designed `GET /forecast/{productId}` and `GET /reports?from=&to=` API endpoints with S3-stored report files. The calculation logic matches the SAD design; it has not yet been moved behind a Lambda/API boundary.
