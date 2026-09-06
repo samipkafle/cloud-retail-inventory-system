@@ -130,6 +130,26 @@ class TestPredictForProduct:
         prediction = engine.predict_for_product([5.0] * 10)  # constant
         assert prediction["trendLabel"] == "Stable"
 
+    def test_labels_a_small_but_well_explained_slope_as_a_real_trend(self):
+        # A clean, noise-free line with a small slope (0.02/day) still has
+        # R²=1 — a real, fully-explained trend. Classification must key off
+        # R², not an arbitrary raw slope magnitude (a prior version used a
+        # fixed 0.05 threshold and wrongly called exactly this "Stable").
+        series = [3.0 + 0.02 * day for day in range(30)]
+        prediction = engine.predict_for_product(series)
+
+        assert prediction["rSquared"] > 0.99
+        assert prediction["trendLabel"] == "Increasing"
+
+    def test_labels_noisy_data_as_stable_even_with_a_nonzero_slope(self):
+        # Slope may come out nonzero by chance on pure noise; R² should be
+        # too low to call it a real trend.
+        noisy_series = [5.0, 8.0, 2.0, 9.0, 1.0, 7.0, 3.0, 6.0, 4.0, 5.0]
+        prediction = engine.predict_for_product(noisy_series)
+
+        assert prediction["rSquared"] < engine.MIN_R_SQUARED_FOR_TREND
+        assert prediction["trendLabel"] == "Stable"
+
     def test_never_predicts_negative_demand(self):
         # Sharp decline that would go negative if not clamped.
         series = [float(30 - day * 5) for day in range(10)]

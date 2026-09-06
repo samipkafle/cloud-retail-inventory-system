@@ -34,8 +34,14 @@ RECOMMENDATIONS_TABLE_NAME = os.environ["RECOMMENDATIONS_TABLE_NAME"]
 MODEL_VERSION = "trend-linreg-v1"
 MIN_DAYS_OF_HISTORY = 7
 FORECAST_HORIZON_DAYS = 14
-# Daily-unit slope below this magnitude is treated as noise, not a real trend.
-TREND_SLOPE_THRESHOLD = 0.05
+# A trend is only called Increasing/Decreasing if the line explains at
+# least this much of the day-to-day variance (R²) — otherwise the slope's
+# sign is just noise, regardless of its raw magnitude. An earlier version
+# used a fixed absolute slope threshold instead; that miscalibrates across
+# products with different sales volumes (a real, well-explained trend of
+# 0.02 units/day was being called "Stable" purely because 0.02 < 0.05,
+# even at R²=0.68 — the arbitrary unit threshold, not the data, was wrong).
+MIN_R_SQUARED_FOR_TREND = 0.1
 
 
 def scan_all(table):
@@ -106,12 +112,12 @@ def predict_for_product(daily_series):
     predicted_daily = intercept + slope * future_x
     predicted_demand = max(0.0, float(np.mean(predicted_daily)) * FORECAST_HORIZON_DAYS)
 
-    if slope > TREND_SLOPE_THRESHOLD:
-        trend_label = "Increasing"
-    elif slope < -TREND_SLOPE_THRESHOLD:
-        trend_label = "Decreasing"
-    else:
+    if r_squared < MIN_R_SQUARED_FOR_TREND:
         trend_label = "Stable"
+    elif slope > 0:
+        trend_label = "Increasing"
+    else:
+        trend_label = "Decreasing"
 
     return {
         "predictedDemand": round(predicted_demand, 2),
