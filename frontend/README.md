@@ -13,6 +13,15 @@ It supports current backend API:
 - `POST /sales`
 - `GET /activities`
 - `POST /activities`
+- `GET /inventory`
+- `GET /alerts`
+- `GET /forecast`, `GET /forecast/{productId}`
+- `GET /reports`
+- `GET /recommendations`
+- `GET /users`, `POST /users`
+- `GET /telemetry`, `POST /telemetry`, `GET /telemetry/events`
+
+Every request above requires a real Cognito ID token — see `js/auth.js` below.
 
 ## Folder Structure
 
@@ -24,6 +33,7 @@ frontend/
   README.md
     js/
       app.js
+      auth.js
       config.js
       actions.js
       utils.js
@@ -51,19 +61,21 @@ frontend/
 `Module(js Folder)`
 
 
-- js/app.js Starts the application and connects HTML elements to JavaScript functions. It also manages the prototype login and navigation.
+- js/app.js Starts the application and connects HTML elements to JavaScript functions. It also manages login/logout and navigation.
 
-- js/actions.js Handles major user actions and coordinates the other files. Adding, editing, deleting or restocking a product; recording a sale; exporting CSV files.
+- js/auth.js Signs in against the real Cognito User Pool (SRP flow), stores the ID token, and maps the token's `cognito:groups` claim to the app's manager/staff role. Login is no longer a prototype — an account has to actually exist in Cognito (see the Team page, manager-only, for creating one).
 
-- js/config.js Stores the default AWS API URL and temporary in-memory application state.
+- js/actions.js Handles major user actions and coordinates the other files. Adding, editing, deleting or restocking a product; recording a sale; creating a staff/manager account; exporting CSV files.
+
+- js/config.js Stores the default AWS API URL, the Cognito User Pool/Client IDs, and temporary in-memory application state.
 
 - js/utils.js Contains small reusable helper functions used by multiple files. Formatting $15.50, escaping HTML, creating icons or downloading a CSV file.
 
-- js/api.js Sends product, sales and activity requests to API Gateway.
-- js/inventory.js Performs inventory and sales calculations. Calculating inventory value, stock status, sales totals and suggested restock quantities.
+- js/api.js Sends every API Gateway request (products, sales, activities, inventory, alerts, forecast, reports, recommendations, users, telemetry), attaching the Cognito ID token to each one.
+- js/inventory.js Performs stock-status and sales-history calculations used by the dashboard charts. The 14-day forecast itself now comes from `GET /forecast`, not a local calculation.
 
-- js/ui.js Controls interactive interface elements that are not responsible for displaying complete pages. Opening modals, showing loading screens, displaying notifications and changing roles.
-- js/render.js Takes the current data and displays it inside the HTML. Building the product table, dashboard metrics, sales chart, alert list and reports.
+- js/ui.js Controls interactive interface elements that are not responsible for displaying complete pages. Opening modals, showing loading screens, displaying notifications, and showing/hiding nav items by the signed-in user's real role.
+- js/render.js Takes the current data and displays it inside the HTML. Building the product table, dashboard metrics, sales chart, alert list, AI recommendations, the Team account directory, and reports.
 
 
 ## How To Run It
@@ -76,9 +88,9 @@ edit form and inventory CSV all read those AWS-backed fields. Creating or editin
 a product sends both fields to DynamoDB through the product API.
 
 The frontend does not use browser local storage or provide a sample-data mode.
-The configured API address and prototype login exist only in memory and reset
-when the page is refreshed. Products, sales and audit activities are reloaded
-from AWS.
+The configured API address and Cognito session exist only in memory and reset
+when the page is refreshed (a real sign-in is required again after a refresh).
+Products, sales and audit activities are reloaded from AWS.
 
 ### Shared audit history
 

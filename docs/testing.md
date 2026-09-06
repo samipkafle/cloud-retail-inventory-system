@@ -2,7 +2,7 @@
 
 ## Automated tests
 
-`infrastructure/cdk/test/lambda/` has a Jest suite covering all 9 TypeScript Lambda handlers (61 tests): input validation, success paths, and error paths, using `aws-sdk-client-mock` to mock DynamoDB/SNS/CloudWatch rather than hitting real AWS. Notably includes the business-logic edge cases: oversell rejection, low-stock alert creation + SNS publish when a sale crosses the reorder threshold, the sales transaction's conflict handling (409 on a concurrent stock change), and manager-only enforcement of product writes with `AUTH_ENABLED` both on and off.
+`infrastructure/cdk/test/lambda/` has a Jest suite covering all 10 TypeScript Lambda handlers (74 tests): input validation, success paths, and error paths, using `aws-sdk-client-mock` to mock DynamoDB/SNS/CloudWatch/Cognito rather than hitting real AWS. Notably includes the business-logic edge cases: oversell rejection, low-stock alert creation + SNS publish when a sale crosses the reorder threshold, the sales transaction's conflict handling (409 on a concurrent stock change), manager-only enforcement of product writes with `AUTH_ENABLED` both on and off, and a test asserting `POST /users` never returns a password value.
 
 ```bash
 cd infrastructure/cdk
@@ -59,6 +59,30 @@ Two real bugs were found and fixed only by verifying against the real deployed L
 | 8 | Re-checked `GET /recommendations` against the seeded data | curl | **Bug found**: every product showed `trendLabel: "Stable"`, including ones with a strong, well-explained decline (R²=0.68) — the fixed absolute slope threshold (0.05 units/day) was miscalibrated against the actual slope magnitudes involved |
 | 9 | Fixed classification to key off R² (≥0.1) instead of raw slope magnitude, added regression tests, redeployed, re-invoked | `aws lambda invoke` + curl | Trend labels now correctly match each of the 9 products' designed synthetic pattern (2 growers → Increasing, 2 decliners → Decreasing, flat/weekend/seasonal products → Stable) |
 | 10 | `GET /recommendations` with no token | curl | `401` |
+
+### FR-09 forecast switched to the backend endpoint — 2026-09-06
+
+Before switching the frontend from its client-side calculation to `GET /forecast`, verified via curl that the endpoint's numbers matched the existing client-side calculation exactly for the same data (ranking, `daysRemaining`, `suggestedRestockQuantity`). After switching, verified in a real browser (Playwright, real Cognito sign-in, real deployed API): the Dashboard forecast card and Insights recommendation cards render correct data, zero console errors. Confirmed the deployed frontend actually served the new code (`getForecasts` present in the live `js/api.js`, absent from `js/inventory.js`) — not just that the local copy worked.
+
+### FR-08 reports endpoint — 2026-09-06
+
+| # | Check | Method | Result |
+| --- | --- | --- | --- |
+| 1 | `GET /reports?type=inventory` | curl | `200`, presigned S3 URL returned |
+| 2 | Fetched the presigned URL directly | curl | Real CSV content, correct columns/values, UTF-8 BOM present |
+| 3 | `GET /reports?type=sales&from=&to=` (date range filter) | curl | `200`, correctly filtered row count |
+| 4 | Unsigned direct request to the same S3 object URL | curl | `403` — bucket is genuinely private, not just "unlisted" |
+| 5 | Invalid `type`, and `from` after `to` | curl | `400` for both |
+| 6 | No token | curl | `401` |
+
+### Users/Team page (manager account creation) — 2026-09-06
+
+| # | Check | Method | Result |
+| --- | --- | --- | --- |
+| 1 | Staff-role session | Manual browser test | Team nav item never appears |
+| 2 | Manager creates a real test account via the Team page form | Playwright, live API | `201`, directory refreshed to show it immediately |
+| 3 | Directory list | Playwright, live API | Correctly shows email, role pill, status, created date for all existing accounts |
+| 4 | Cleanup | `aws cognito-idp admin-delete-user` | Test account removed (no DELETE endpoint exists by design — account removal is a Console/CLI operation) |
 
 ### Feature testing (ongoing, manual)
 

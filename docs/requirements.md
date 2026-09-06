@@ -31,6 +31,10 @@ Section 4 (Figure 1) documents `Alert` as `alertId (PK)`, `productId (FK)` only,
 - `stockAtAlert` (Number) — the stock level at the moment the alert was raised
 - `reorderThreshold` (Number) — the threshold that was crossed, captured at alert time so it stays accurate even if the product's threshold is changed later
 
+### Recommendation entity — added fields
+
+The SAD report's Section 4 Recommendation entity specifies `productId (FK)`, `predictedDemand`, `trendLabel` and `modelVersion` only. The implemented `RetailRecommendations` item also includes `generatedAt` (ISO 8601, so a stale recommendation can be distinguished from a fresh one), `daysOfHistory` and `rSquared` — required by the SAD report's own AI ethics/risk-mitigation position (Section 9) that a recommendation must be shown with its basis, not presented as an unexplained number; `basis` is a human-readable string built from exactly these two fields.
+
 ### Sales table — added GSI
 
 Section 4's Sale entity table lists only the base attributes, but the accompanying prose explains that `soldAt` is stored as ISO 8601 specifically "so that both the smart restocking forecast (14-day sales velocity) and the recommendation engine... can filter and sort chronologically." Implementing that access pattern requires a secondary index, not just the attribute. The CDK stack adds a `productId`/`soldAt` Global Secondary Index (`productId-soldAt-index`) on the Sales table to support querying a single product's sales history in chronological order.

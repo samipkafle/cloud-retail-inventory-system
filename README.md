@@ -47,26 +47,22 @@ Public self-sign-up is disabled by design — a manager creates staff/manager ac
 ## System Architecture
 
 ```text
-User's browser
-      |
-      v
-Amazon S3 static website
-      |
-      v
-Amazon API Gateway
-      |
-      v
-AWS Lambda functions
-      |
-      +----------------------+
-      |                      |
-      v                      v
-Amazon DynamoDB         Amazon SNS
-Shared business data    Low-stock emails
-      |
-      v
-Amazon CloudWatch
-Logs, metrics and monitoring
+User's browser ── signs in ──> Amazon Cognito (User Pool)
+      |                              |
+      v                              v (ID token)
+Amazon S3 static website     Amazon API Gateway (Cognito authorizer on every route)
+                                      |
+                                      v
+                              AWS Lambda functions
+                                      |
+                      +---------------+---------------+
+                      |               |               |
+                      v               v               v
+              Amazon DynamoDB    Amazon SNS     Amazon CloudWatch
+              Shared business    Low-stock +    Logs, metrics,
+              data               error emails   monitoring
+
+Amazon EventBridge ── daily ──> Recommendation engine Lambda (Python) ── writes ──> DynamoDB
 ```
 
 Low-stock alerts branch out from the sales flow above:
@@ -110,7 +106,8 @@ Email Notification
 - Amazon SNS
 - Amazon CloudWatch
 - Amazon Cognito
-- Python (planned, for the demand recommendation engine)
+- Python (the demand recommendation engine's Lambda — numpy-based trend regression)
+- Amazon EventBridge
 - Git and GitHub
 
 ## Frontend Structure
@@ -121,7 +118,8 @@ Email Notification
 | `frontend/style.css` | Controls the layout, responsive design, colours and component styling |
 | `frontend/script.js` | Loads the application after the HTML document is ready |
 | `frontend/js/app.js` | Starts the application and connects buttons, forms, login and navigation |
-| `frontend/js/actions.js` | Handles product forms, sales, restocking, data loading and CSV exports |
+| `frontend/js/auth.js` | Real Cognito sign-in/sign-out and mapping `cognito:groups` to the app's manager/staff role |
+| `frontend/js/actions.js` | Handles product forms, sales, restocking, data loading, staff account creation and CSV exports |
 | `frontend/js/api.js` | Sends requests to the API Gateway endpoints |
 | `frontend/js/config.js` | Contains application configuration and temporary runtime state |
 | `frontend/js/inventory.js` | Calculates stock status, sales totals and demand forecasts |
@@ -140,7 +138,12 @@ Persistent business information is loaded from AWS. The application no longer us
 | `activity-handler.ts` | Stores and retrieves shared audit-history records |
 | `alerts-handler.ts` | Retrieves stored low-stock alerts |
 | `inventory-status-handler.ts` | Returns stock and low-stock information |
+| `forecast-handler.ts` | Computes each product's 14-day sales-velocity forecast |
+| `reports-handler.ts` | Generates an inventory/sales CSV, stores it in S3, returns a presigned download URL |
+| `recommendations-handler.ts` | Retrieves the AI-trained demand recommendations |
+| `users-handler.ts` | Manager-only: creates and lists staff/manager Cognito accounts |
 | `telemetry-handler.ts` | Records and retrieves application monitoring data |
+| `lambda-python/recommendation-engine/handler.py` | Python — fits a linear trend to each product's daily sales history on a schedule and writes the recommendation |
 | `lib/cdk-stack.ts` | Defines all AWS resources, permissions, API routes and deployment settings |
 
 ## How Sales Work
@@ -159,7 +162,9 @@ Using a DynamoDB transaction prevents a sale record from being stored without it
 
 ## Demand Insight Calculation
 
-The current demand forecast is rule-based; it is not a machine-learning model. For each product, it:
+There are two separate, independent demand models — shown side by side on the Insights page.
+
+**Rule-based 14-day forecast** (`GET /forecast`, `forecast-handler.ts`) — not a machine-learning model. For each product:
 
 1. Totals the units sold during the previous 14 days.
 2. Calculates average daily sales:
@@ -173,7 +178,9 @@ The current demand forecast is rule-based; it is not a machine-learning model. F
 5. Suggests the quantity required to reach that target.
 6. Ranks products so the most urgent restock requirement appears first.
 
-Because products and sales are loaded from DynamoDB, deployed devices should calculate the same forecast after refreshing the same application version.
+This runs server-side, so every device sees the same numbers rather than each computing its own.
+
+**AI demand recommendations** (`GET /recommendations`, a Python Lambda) — a genuine trained model: fits an ordinary-least-squares linear trend to each product's daily sales history (`numpy.polyfit`) on a daily schedule, labelling each product `Increasing`, `Decreasing`, `Stable`, or `Insufficient data` based on how much of the day-to-day variance the trend actually explains (R²), not just the raw slope. Always shown with its basis (days of history, R²) — decision support, not a directive. See [docs/architecture.md](docs/architecture.md#demand-recommendation-engine-fr-10) for the full mechanics.
 
 ## Reports
 
@@ -192,7 +199,7 @@ Users can download:
 - Recorded sales history as CSV
 - A print-friendly demand insight summary
 
-CSV files are generated by the browser from the current AWS data. They are not currently stored in S3.
+These downloads are generated by the browser directly from the data already loaded, for an instant, no-network-round-trip export. Separately, `GET /reports?type=inventory|sales` (`reports-handler.ts`) generates the same kind of CSV server-side, stores it in a private S3 bucket, and returns a time-limited presigned download URL — a durable, shareable artifact rather than only a one-off browser download. The frontend doesn't call this endpoint yet; it's available as a backend capability.
 
 ## API Reference
 
@@ -349,8 +356,8 @@ Postman is also used to test the REST API endpoints directly.
 
 - [ ] Host the frontend through HTTPS using CloudFront or another secure host
 - [ ] Extend the recommendation engine beyond a linear trend model (e.g. to capture seasonal/cyclical patterns)
+- [ ] Switch the frontend's report downloads to call the S3-backed `GET /reports` endpoint instead of generating CSVs client-side
 - [ ] Add automated deployment through a CI/CD pipeline
-- [ ] Store generated report files in Amazon S3
 
 ## Documentation
 

@@ -20,7 +20,7 @@ AWS Lambda functions
       |                   |                   |
       v                   v                   v
 Amazon DynamoDB      Amazon SNS          Amazon CloudWatch
-4 tables             Low-stock +         Custom metrics, alarms,
+5 tables             Low-stock +         Custom metrics, alarms,
                       frontend-error       Logs Insights queries
                       email alerts
 ```
@@ -46,8 +46,8 @@ Email notification
 | --- | --- | --- |
 | Amazon S3 | Hosts the static frontend as a public website (`FrontendBucket`); stores generated CSV reports privately, served only via presigned URL (`ReportsBucket`) | `FrontendBucket` + `BucketDeployment`, `ReportsBucket` |
 | Amazon API Gateway | REST API (`InventoryApi`), edge-optimized, Cognito-authorized | `RestApi` |
-| AWS Lambda | 8 TypeScript functions (`NodejsFunction`) + 1 Python function — see [Lambda functions](#lambda-functions) | `NodejsFunction`, `lambda.Function` |
-| Amazon DynamoDB | 4 tables — see [Data model](#data-model) | `dynamodb.Table` |
+| AWS Lambda | 10 TypeScript functions (`NodejsFunction`) + 1 Python function — see [Lambda functions](#lambda-functions) | `NodejsFunction`, `lambda.Function` |
+| Amazon DynamoDB | 5 tables — see [Data model](#data-model) | `dynamodb.Table` |
 | Amazon Cognito | User Pool + app client + `manager` group (FR-01) | `UserPool`, `UserPoolClient`, `CfnUserPoolGroup` |
 | Amazon SNS | `RetailLowStockAlerts` topic — low-stock and frontend-error emails | `sns.Topic` |
 | Amazon CloudWatch | Custom metrics (`GreenLeaf/Frontend`), an alarm on repeated frontend errors, and Logs Insights queries for the raw event log | `cloudwatch.Metric`, `cloudwatch.Alarm` |
@@ -57,7 +57,7 @@ Email notification
 
 ## Data model
 
-Four separate DynamoDB tables (deliberately not single-table design — see the SAD report's rationale: dominant access patterns are single-partition-key lookups, and separate tables keep each one easier to reason about and test). All are `PAY_PER_REQUEST` billing with `RemovalPolicy.DESTROY` (acceptable for a $0 student prototype; would need reconsidering for anything real).
+Five separate DynamoDB tables (deliberately not single-table design — see the SAD report's rationale: dominant access patterns are single-partition-key lookups, and separate tables keep each one easier to reason about and test). All are `PAY_PER_REQUEST` billing with `RemovalPolicy.DESTROY` (acceptable for a $0 student prototype; would need reconsidering for anything real).
 
 ### RetailInventory (product/inventory)
 Partition key: `productId` (String)
@@ -73,7 +73,7 @@ Partition key: `productId` (String)
 
 ### RetailSales
 Partition key: `saleId` (String, UUID)
-GSI `productId-soldAt-index`: partition `productId`, sort `soldAt` — supports querying one product's sales chronologically, which both the FR-09 forecast and any future FR-10 recommendation model need.
+GSI `productId-soldAt-index`: partition `productId`, sort `soldAt` — supports querying one product's sales chronologically, which the FR-09 forecast needs (the FR-10 recommendation engine instead scans the whole table and groups in-memory — see [Demand recommendation engine](#demand-recommendation-engine-fr-10)).
 
 | Attribute | Type | Notes |
 | --- | --- | --- |
@@ -141,11 +141,11 @@ Partition key: `activityId` (String, UUID)
 | UsersLambda | `lambda/users-handler.ts` | `GET/POST /users` | Cognito admin actions (`AdminCreateUser`, `AdminAddUserToGroup`, `ListUsers`, `ListUsersInGroup`), scoped to the User Pool's ARN — no DynamoDB access |
 | TelemetryLambda | `lambda/telemetry-handler.ts` | `POST/GET /telemetry`, `GET /telemetry/events` | None (CloudWatch metrics + Logs Insights only) |
 
-All run on `NODEJS_24_X`, bundled per-function via `NodejsFunction` (esbuild, no Docker).
+All the TypeScript functions run on `NODEJS_24_X`, bundled per-function via `NodejsFunction` (esbuild, no Docker). RecommendationEngineLambda is the one exception — Python 3.12 via plain `lambda.Function`, no bundling step at all since it has zero pip dependencies of its own (see [Demand recommendation engine](#demand-recommendation-engine-fr-10)).
 
 ## Authentication and authorization (FR-01)
 
-- **Cognito User Pool** (`RetailUserPool`): email sign-in, self-signup disabled — accounts are provisioned by an admin (`admin-create-user`), matching a retail-staff app rather than a public consumer app.
+- **Cognito User Pool** (`RetailUserPool`): email sign-in, self-signup disabled — accounts are provisioned by a manager via the app's Team page (`GET/POST /users`), or an admin directly via the AWS Console/CLI as a fallback, matching a retail-staff app rather than a public consumer app.
 - **App client**: no client secret (required for browser-side auth); `ALLOW_USER_SRP_AUTH`, `ALLOW_USER_PASSWORD_AUTH` and `ALLOW_ADMIN_USER_PASSWORD_AUTH` all enabled. The frontend's `amazon-cognito-identity-js` library defaults to the SRP flow — this was initially missed (only `USER_PASSWORD_AUTH` was enabled), which made browser sign-in fail even though direct CLI/API testing with `USER_PASSWORD_AUTH` passed. Fixed once discovered via real end-to-end browser testing, not just API-level testing.
 - **`manager` Cognito group**: members can create/update/delete products; everyone else authenticated is treated as staff (record sales, view inventory/alerts, but not manage the catalogue).
 - **Enforcement is a single switch**: `AUTH_ENABLED` in `cdk-stack.ts` controls both the API Gateway authorizer (`COGNITO` vs `NONE` on every route) and an `AUTH_ENABLED` Lambda env var that `inventory-handler.ts`'s `requireManager()` checks before allowing product writes. Both must agree — the Lambda-side check is a defence-in-depth backstop, not the primary enforcement (the API Gateway authorizer is).
@@ -224,10 +224,10 @@ Static HTML/CSS/vanilla JavaScript ES modules (`frontend/`), no build step or bu
 | `js/app.js` | Event wiring, login/logout, page navigation |
 | `js/auth.js` | Real Cognito sign-in/sign-out, `cognito:groups` → app role mapping |
 | `js/api.js` | All API Gateway requests, including attaching the Cognito ID token |
-| `js/actions.js` | Product/sale forms, restocking, CSV export, data loading |
+| `js/actions.js` | Product/sale forms, restocking, CSV export, staff account creation, data loading |
 | `js/config.js` | Runtime config: API URL, Cognito Pool/Client IDs, shared `state` |
 | `js/inventory.js` | Stock status, sales-history helpers used by the dashboard charts |
-| `js/render.js` | Renders dashboard pages, tables, charts, reports |
+| `js/render.js` | Renders dashboard pages, tables, charts, reports, AI recommendations, and the Team account directory |
 | `js/ui.js` | Modals, navigation, role-based visibility, loading states |
 | `js/utils.js` | Formatting, validation, HTML/CSV helpers |
 
@@ -245,4 +245,11 @@ npm run cdk -- synth
 npm run cdk -- deploy
 ```
 
-A deploy updates Lambda code, API Gateway configuration, DynamoDB tables (schema-compatible changes only — CDK will refuse or replace on breaking changes), Cognito, and re-syncs the frontend to S3. There's no CI pipeline yet enforcing `synth`/tests on PRs (see [testing.md](testing.md)), so this currently relies on whoever deploys running it manually and reviewing the CloudFormation changeset.
+A deploy updates Lambda code, API Gateway configuration, DynamoDB tables (schema-compatible changes only — CDK will refuse or replace on breaking changes), Cognito, and re-syncs the frontend to S3. GitHub Actions (`.github/workflows/backend-ci.yml`) runs type-checking, the Jest suite, `cdk synth`, and the pytest suite on every PR touching `infrastructure/cdk/` — but it doesn't deploy; an actual `cdk deploy` is still a manual step, run by whoever is making the change, who reviews the CloudFormation changeset themselves (see [testing.md](testing.md) for what CI does and doesn't cover).
+
+To seed the synthetic sales history the recommendation engine needs (see below), or refresh recommendations without waiting for the daily schedule:
+
+```bash
+npx ts-node scripts/seed-synthetic-sales.ts --confirm   # writes to the real Sales table
+aws lambda invoke --function-name <RecommendationEngineLambda name> /tmp/out.json
+```
