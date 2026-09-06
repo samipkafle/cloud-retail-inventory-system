@@ -1,5 +1,4 @@
-import { state, STORAGE_KEYS } from "./config.js";
-import { saveJson } from "./storage.js";
+import { state } from "./config.js";
 import {
   $,
   formatMoney,
@@ -9,8 +8,6 @@ import {
   downloadCsv,
 } from "./utils.js";
 import {
-  ensureProductMetadata,
-  setMetadata,
   getMetadata,
   getStockStatus,
   getForecasts,
@@ -18,7 +15,6 @@ import {
 } from "./inventory.js";
 import {
   apiRequest,
-  readDemoProducts,
   createProduct,
   updateProduct,
   recordSale,
@@ -76,7 +72,7 @@ function prepareActivities(activities) {
     .slice(0, 100);
 }
 
-// Loads products, shared sales and shared activity from AWS or sample-data storage. GET Function
+// Loads products, shared sales and shared activity from AWS. GET Function
 export async function loadProducts({ showLoader = true } = {}) {
   if (showLoader) showLoading("Loading inventory…");
   $("#apiErrorPanel").hidden = true;
@@ -85,31 +81,24 @@ export async function loadProducts({ showLoader = true } = {}) {
   try {
     const startedAt = performance.now();
 
-    if (state.mode === "demo") {
-      state.products = readDemoProducts();
-      state.lastResponseMs = 0;
-      setConnectionStatus("demo", "Sample data mode");
-      recordMonitorEvent("success", "Sample inventory loaded", 0);
-    } else {
-      const response = await apiRequest("/products");
+    const response = await apiRequest("/products");
 
-      if (!Array.isArray(response)) {
-        throw new Error("GET /products did not return a product list.");
-      }
-
-      state.products = response
-        .map(normaliseProduct)
-        .filter((product) => product.productId);
-      state.lastResponseMs = Math.round(performance.now() - startedAt);
-      setConnectionStatus("connected", "AWS API connected");
-      recordMonitorEvent(
-        "success",
-        `GET /products returned ${state.products.length} product${
-          state.products.length === 1 ? "" : "s"
-        }`,
-        state.lastResponseMs,
-      );
+    if (!Array.isArray(response)) {
+      throw new Error("GET /products did not return a product list.");
     }
+
+    state.products = response
+      .map(normaliseProduct)
+      .filter((product) => product.productId);
+    state.lastResponseMs = Math.round(performance.now() - startedAt);
+    setConnectionStatus("connected", "AWS API connected");
+    recordMonitorEvent(
+      "success",
+      `GET /products returned ${state.products.length} product${
+        state.products.length === 1 ? "" : "s"
+      }`,
+      state.lastResponseMs,
+    );
 
     const salesResponse = await getSales();
     if (!Array.isArray(salesResponse)) {
@@ -124,7 +113,6 @@ export async function loadProducts({ showLoader = true } = {}) {
     state.activities = prepareActivities(activitiesResponse);
 
     state.lastCheckedAt = new Date().toISOString();
-    ensureProductMetadata();
     renderAll();
     return true;
   } catch (error) {
@@ -221,21 +209,26 @@ export async function handleProductSubmit(event) {
     if (isEditing) {
       await updateProduct(state.editingProductId, {
         name,
+        category,
         price,
         stock,
         reorderThreshold: reorderLevel,
       });
-      setMetadata(state.editingProductId, { category, reorderLevel });
       await addActivity("stock", "Product updated", `${name} (${state.editingProductId})`);
     } else {
-      await createProduct({ productId, name, price, stock, reorderThreshold: reorderLevel });
-      setMetadata(productId, { category, reorderLevel });
+      await createProduct({
+        productId,
+        name,
+        category,
+        price,
+        stock,
+        reorderThreshold: reorderLevel,
+      });
       await addActivity("stock", "Product added", `${name} (${productId})`);
     }
 
     closeModal("productModal");
-    if (state.mode === "api") await loadProducts({ showLoader: false });
-    else renderAll();
+    await loadProducts({ showLoader: false });
     showToast(isEditing ? "Product changes saved." : "Product added to inventory.");
   } catch (error) {
     setFormError("#productFormError", friendlyApiError(error));
@@ -273,30 +266,17 @@ export async function handleSaleSubmit(event) {
   try {
     const result = await recordSale(product.productId, quantity);
 
-    const sale = {
-      id: `SALE-${Date.now().toString().slice(-8)}`,
-      productId: product.productId,
-      productName: product.name,
-      quantity,
-      unitPrice: product.price,
-      total: Number((product.price * quantity).toFixed(2)),
-      createdAt: new Date().toISOString(),
-    };
-
-    if (state.mode === "demo") {
-      state.sales.unshift(sale);
-      state.sales = state.sales.slice(0, 500);
-      saveJson(STORAGE_KEYS.sales, state.sales);
-    }
+    const saleTotal = Number(
+      result?.sale?.total ?? (product.price * quantity).toFixed(2),
+    );
     await addActivity(
       "sale",
       "Sale recorded",
-      `${quantity} × ${product.name} · ${formatMoney(sale.total)}`,
+      `${quantity} × ${product.name} · ${formatMoney(saleTotal)}`,
     );
 
     closeModal("saleModal");
-    if (state.mode === "api") await loadProducts({ showLoader: false });
-    else renderAll();
+    await loadProducts({ showLoader: false });
     showToast(
       result.alertRaised
         ? `Sale recorded. ${result.remainingStock} units remain. Low-stock alert triggered.`
@@ -319,8 +299,6 @@ export async function handleConfirmDelete() {
 
   try {
     await deleteProduct(productId);
-    delete state.metadata[productId];
-    saveJson(STORAGE_KEYS.metadata, state.metadata);
     await addActivity(
       "alert",
       "Product deleted",
@@ -329,8 +307,7 @@ export async function handleConfirmDelete() {
     );
     closeModal("confirmModal");
 
-    if (state.mode === "api") await loadProducts({ showLoader: false });
-    else renderAll();
+    await loadProducts({ showLoader: false });
     showToast("Product removed from inventory.");
   } catch (error) {
     closeModal("confirmModal");
@@ -365,8 +342,7 @@ export async function restockProduct(productId) {
       `${product.name} · +${unitsAdded} units`,
     );
 
-    if (state.mode === "api") await loadProducts({ showLoader: false });
-    else renderAll();
+    await loadProducts({ showLoader: false });
     showToast(`${unitsAdded} units added to ${product.name}.`);
   } catch (error) {
     showToast(friendlyApiError(error), "error");
@@ -430,16 +406,7 @@ export function exportSales() {
   showToast("Sales CSV downloaded.");
 }
 
-// Switches the application to locally stored sample data.
-export async function useDemoMode() {
-  state.mode = "demo";
-  localStorage.setItem(STORAGE_KEYS.mode, state.mode);
-  closeModal("apiModal");
-  await loadProducts();
-  showToast("Sample inventory loaded. Changes stay in this browser.");
-}
-
-// Validates and saves a new AWS API address.
+// Validates and applies a new AWS API address for the current page session.
 export async function handleApiSubmit(event) {
   event.preventDefault();
   setFormError("#apiFormError");
@@ -457,9 +424,6 @@ export async function handleApiSubmit(event) {
   }
 
   state.apiUrl = rawUrl;
-  state.mode = "api";
-  localStorage.setItem(STORAGE_KEYS.apiUrl, state.apiUrl);
-  localStorage.setItem(STORAGE_KEYS.mode, state.mode);
   closeModal("apiModal");
 
   const connected = await loadProducts();

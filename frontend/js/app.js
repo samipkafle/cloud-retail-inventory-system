@@ -1,5 +1,4 @@
-import { state, STORAGE_KEYS, ROLE_PROFILES } from "./config.js";
-import { loadJson, saveJson } from "./storage.js";
+import { state, ROLE_PROFILES } from "./config.js";
 import { $, $$ } from "./utils.js";
 import {
   loadProducts,
@@ -11,7 +10,6 @@ import {
   restockProduct,
   exportInventory,
   exportSales,
-  useDemoMode,
   handleApiSubmit,
 } from "./actions.js";
 import {
@@ -57,14 +55,11 @@ function handleLogin(event) {
     return;
   }
 
-  const session = { role: state.role, email, createdAt: new Date().toISOString() };
-  saveJson(STORAGE_KEYS.session, session);
-  enterApp(session);
+  enterApp({ role: state.role, email });
 }
 
 // Ends the current session and returns to the login screen.
 function logout() {
-  localStorage.removeItem(STORAGE_KEYS.session);
   $("#appShell").hidden = true;
   $("#loginView").hidden = false;
   selectRole(state.role);
@@ -170,8 +165,6 @@ function bindEvents() {
     loadTelemetrySummary();
     loadTelemetryEvents();
   });
-  $("#useDemoButton").addEventListener("click", useDemoMode);
-  $("#apiDemoModeButton").addEventListener("click", useDemoMode);
   $("#connectionButton").addEventListener("click", openApiModal);
   $("#apiForm").addEventListener("submit", handleApiSubmit);
 
@@ -223,7 +216,4 @@ export function initialise() {
   bindErrorReporting();
   selectRole("manager");
   $("#apiUrlInput").value = state.apiUrl;
-
-  const session = loadJson(STORAGE_KEYS.session, null);
-  if (session?.role && ROLE_PROFILES[session.role]) enterApp(session);
 }

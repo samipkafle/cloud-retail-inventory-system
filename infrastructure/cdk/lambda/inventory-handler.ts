@@ -73,6 +73,9 @@ export const handler = async (event: any) => {
             name: {
               S: body.name,
             },
+            category: {
+              S: String(body.category || 'Other'),
+            },
             price: {
               N: String(body.price),
             },
@@ -107,6 +110,7 @@ export const handler = async (event: any) => {
       const products = (result.Items || []).map((item) => ({
         productId: item.productId?.S,
         name: item.name?.S,
+        category: item.category?.S || '',
         price: item.price?.N ? Number(item.price.N) : 0,
         stock: item.stock?.N ? Number(item.stock.N) : 0,
         reorderThreshold: item.reorderThreshold?.N
@@ -147,6 +151,7 @@ export const handler = async (event: any) => {
       const product = {
         productId: result.Item.productId?.S,
         name: result.Item.name?.S,
+        category: result.Item.category?.S || '',
         price: result.Item.price?.N
           ? Number(result.Item.price.N)
           : 0,
@@ -176,6 +181,7 @@ export const handler = async (event: any) => {
 
       if (
         body.name === undefined &&
+        body.category === undefined &&
         body.price === undefined &&
         body.stock === undefined &&
         body.reorderThreshold === undefined
@@ -184,7 +190,7 @@ export const handler = async (event: any) => {
           statusCode: 400,
           headers: corsHeaders,
           body: JSON.stringify({
-            message: 'Provide name, price, stock or reorderThreshold to update',
+            message: 'Provide name, category, price, stock or reorderThreshold to update',
           }),
         };
       }
@@ -198,6 +204,14 @@ export const handler = async (event: any) => {
         expressionAttributeNames['#name'] = 'name';
         expressionAttributeValues[':name'] = {
           S: String(body.name),
+        };
+      }
+
+      if (body.category !== undefined) {
+        updateExpressions.push('#category = :category');
+        expressionAttributeNames['#category'] = 'category';
+        expressionAttributeValues[':category'] = {
+          S: String(body.category || 'Other'),
         };
       }
 
@@ -243,6 +257,7 @@ export const handler = async (event: any) => {
       const updatedProduct = {
         productId: result.Attributes?.productId?.S,
         name: result.Attributes?.name?.S,
+        category: result.Attributes?.category?.S || '',
         price: result.Attributes?.price?.N
           ? Number(result.Attributes.price.N)
           : 0,

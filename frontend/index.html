@@ -108,7 +108,6 @@
 
           <span class="section-kicker">Welcome back</span>
           <h2>Sign in to your workspace</h2>
-          <p class="subtle">Choose a prototype role to continue.</p>
 
           <div id="roleSwitch" class="role-switch" aria-label="Choose prototype role">
             <button type="button" class="active" data-role="manager">
@@ -136,7 +135,6 @@
             <span>Sign in as manager</span>
             <svg><use href="#icon-arrow"></use></svg>
           </button>
-          <p class="demo-note"><span>Prototype</span> Role selection</p>
         </form>
       </section>
     </div>
@@ -227,7 +225,6 @@
               <p id="apiErrorText">Check the API address and make sure CORS is enabled in API Gateway.</p>
             </div>
             <button id="retryApiButton" class="secondary-button" type="button">Retry</button>
-            <button id="useDemoButton" class="primary-button" type="button">Use sample data</button>
           </section>
 
           <section id="overviewPage" class="page active-page" data-page="overview">
@@ -492,7 +489,7 @@
             <label>Stock quantity<input id="productStockInput" name="stock" type="number" min="0" step="1" value="0" required /></label>
           </div>
           <div class="form-row local-fields">
-            <label>Category <small>Saved in this browser</small><select id="productCategoryInput" name="category"><option>Dairy</option><option>Bakery</option><option>Produce</option><option>Pantry</option><option>Beverages</option><option>Household</option><option>Other</option></select></label>
+            <label>Category <small>Saved with this product in AWS</small><select id="productCategoryInput" name="category"><option>Dairy</option><option>Bakery</option><option>Produce</option><option>Pantry</option><option>Beverages</option><option>Household</option><option>Other</option></select></label>
             <label>Reorder level <small id="productReorderStorageHint">Saved with this product in AWS</small><input id="productReorderInput" name="reorderLevel" type="number" min="0" step="1" value="5" required /></label>
           </div>
           <p id="productFormError" class="form-error" hidden></p>
@@ -527,7 +524,7 @@
           <label>API Gateway base URL<input id="apiUrlInput" name="apiUrl" type="url" required /></label>
           <p class="field-help">Enter the stage URL without <code>/products</code>. Example: <code>https://abc.execute-api.ap-southeast-2.amazonaws.com/prod</code></p>
           <p id="apiFormError" class="form-error" hidden></p>
-          <div class="modal-actions"><button id="apiDemoModeButton" class="secondary-button" type="button">Use sample data</button><button class="secondary-button modal-close-button" type="button" data-close-modal="apiModal">Cancel</button><button class="primary-button" type="submit">Save and connect</button></div>
+          <div class="modal-actions"><button class="secondary-button modal-close-button" type="button" data-close-modal="apiModal">Cancel</button><button class="primary-button" type="submit">Connect</button></div>
         </form>
       </section>
     </div>

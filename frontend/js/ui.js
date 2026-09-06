@@ -88,9 +88,7 @@ export function showProductModal(productId = null) {
   $("#productForm").reset();
   $("#productStockInput").value = "0";
   $("#productReorderInput").value = "5";
-  $("#productReorderStorageHint").textContent = state.mode === "demo"
-    ? "Sample mode: saved in this browser"
-    : "Saved with this product in AWS";
+  $("#productReorderStorageHint").textContent = "Saved with this product in AWS";
 
   if (productId) {
     const product = state.products.find((item) => item.productId === productId);
@@ -184,9 +182,7 @@ export function showDeleteModal(productId) {
 
   state.deletingProductId = productId;
   $("#confirmText").textContent =
-    state.mode === "demo"
-      ? `This removes ${product.name} from the sample inventory in this browser.`
-      : `This removes ${product.name} from DynamoDB and cannot be undone.`;
+    `This removes ${product.name} from DynamoDB and cannot be undone.`;
   openModal("confirmModal");
 }
 
@@ -254,4 +250,3 @@ export function selectRole(role) {
   $("#loginButton span").textContent = `Sign in as ${role}`;
   setFormError("#loginError");
 }
-
