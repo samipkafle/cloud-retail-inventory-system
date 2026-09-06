@@ -1902,6 +1902,79 @@ td {
   padding: 25px;
 }
 
+.ai-heading {
+  margin-top: 40px;
+}
+
+.ai-recommendation-list {
+  display: grid;
+  gap: 10px;
+}
+
+.ai-recommendation-row {
+  display: grid;
+  grid-template-columns: 1.4fr 0.9fr 0.9fr 1.8fr;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 21px;
+}
+
+.ai-recommendation-row h3 {
+  margin: 0 0 3px;
+  font-family: Georgia, serif;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.ai-recommendation-row .ai-product-id {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.ai-recommendation-row .ai-stat small {
+  display: block;
+  color: var(--muted);
+  font-size: 8px;
+  margin-bottom: 3px;
+}
+
+.ai-recommendation-row .ai-stat b {
+  font-size: 12px;
+}
+
+.ai-recommendation-row .ai-basis {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.trend-tag.trend-increasing {
+  color: var(--green);
+  background: var(--green-soft);
+}
+
+.trend-tag.trend-decreasing {
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 12%, white);
+}
+
+.trend-tag.trend-stable {
+  color: var(--muted);
+  background: color-mix(in srgb, var(--muted) 12%, white);
+}
+
+.trend-tag.trend-insufficient {
+  color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 12%, white);
+}
+
+@media (max-width: 860px) {
+  .ai-recommendation-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
 .season-panel > div:first-child {
   display: grid;
   grid-template-columns: 45px 1fr;

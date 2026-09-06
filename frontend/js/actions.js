@@ -20,6 +20,7 @@ import {
   getSales,
   getActivities,
   getForecasts,
+  getRecommendations,
   deleteProduct,
   friendlyApiError,
   getTelemetrySummary,
@@ -120,6 +121,16 @@ export async function loadProducts({ showLoader = true } = {}) {
     } catch (forecastError) {
       console.error("Unable to load forecasts:", forecastError);
       state.forecasts = [];
+    }
+
+    // Best-effort, same reasoning as forecasts above — a separate model
+    // from the rule-based forecast (FR-10, not FR-09).
+    try {
+      const recommendationsResponse = await getRecommendations();
+      state.recommendations = Array.isArray(recommendationsResponse) ? recommendationsResponse : [];
+    } catch (recommendationError) {
+      console.error("Unable to load recommendations:", recommendationError);
+      state.recommendations = [];
     }
 
     state.lastCheckedAt = new Date().toISOString();

@@ -25,6 +25,7 @@ export function renderAll() {
   renderSales();
   renderAlerts();
   renderInsights();
+  renderAiRecommendations();
   renderReports();
   renderMonitoring();
   refreshSaleOptions();
@@ -387,6 +388,45 @@ export function renderInsights() {
       return `<span style="height:${height}%" title="${day.quantity} items on ${escapeHtml(
         day.date.toLocaleDateString("en-AU"),
       )}"></span>`;
+    })
+    .join("");
+}
+
+// Maps a trend label to its tag colour class (see .trend-tag.trend-* in
+// style.css). Falls back to the "insufficient" styling for any unknown
+// label rather than defaulting to a possibly-misleading colour.
+const TREND_CLASSES = {
+  Increasing: "trend-increasing",
+  Decreasing: "trend-decreasing",
+  Stable: "trend-stable",
+};
+
+// Displays the FR-10 AI recommendations — a separate trend model from the
+// rule-based forecast above (FR-09), always shown with its basis so a
+// manager can judge and override it rather than treat it as a directive.
+export function renderAiRecommendations() {
+  const container = $("#aiRecommendationList");
+  if (!container) return;
+
+  if (!state.recommendations.length) {
+    container.innerHTML = `<article class="content-card recommendation"><h3>No recommendations yet</h3><p>The recommendation model runs on a daily schedule once enough sales history has been recorded.</p></article>`;
+    return;
+  }
+
+  container.innerHTML = state.recommendations
+    .map((recommendation) => {
+      const product = state.products.find(
+        (item) => item.productId === recommendation.productId,
+      );
+      const trendClass = TREND_CLASSES[recommendation.trendLabel] || "trend-insufficient";
+
+      return `<article class="content-card ai-recommendation-row"><div><h3>${escapeHtml(
+        product?.name || recommendation.productId,
+      )}</h3><span class="ai-product-id">${escapeHtml(recommendation.productId)}</span></div><span class="trend-tag ${trendClass}">${escapeHtml(
+        recommendation.trendLabel,
+      )}</span><div class="ai-stat"><small>Predicted demand (14d)</small><b>${
+        recommendation.predictedDemand
+      } units</b></div><p class="ai-basis">${escapeHtml(recommendation.basis)}</p></article>`;
     })
     .join("");
 }

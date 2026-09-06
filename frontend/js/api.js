@@ -111,6 +111,15 @@ export function getForecasts() {
   return apiRequest("/forecast");
 }
 
+// Loads the AI-trained demand recommendations (FR-10), ranked by predicted
+// demand. Computed server-side by a scheduled trend model
+// (lambda-python/recommendation-engine/handler.py), separate from the
+// rule-based FR-09 forecast above — shown as decision support with its
+// own stated basis, not folded into the rule-based numbers.
+export function getRecommendations() {
+  return apiRequest("/recommendations");
+}
+
 // Records an audit entry through AWS.
 export function recordActivity(activity) {
   return apiRequest("/activities", { method: "POST", body: activity });
