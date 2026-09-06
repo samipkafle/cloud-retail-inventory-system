@@ -301,6 +301,42 @@ export class CdkStack extends cdk.Stack {
     inventoryTable.grantReadData(forecastLambda);
     salesTable.grantReadData(forecastLambda);
 
+    // Private bucket for generated report files (FR-08). Not public like
+    // FrontendBucket — reports are business data, served only via the
+    // time-limited presigned URL that ReportsLambda hands back.
+    const reportsBucket = new s3.Bucket(this, 'ReportsBucket', {
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+    });
+
+    // Reports Lambda Function — GET /reports?type=inventory|sales&from=&to=
+    // (FR-08). Generates a CSV matching the frontend's client-side export
+    // (frontend/js/actions.js exportInventory/exportSales) byte-for-byte,
+    // but stores it in S3 and returns a presigned download URL, so a report
+    // is a durable, shareable artifact rather than only a one-off browser
+    // download.
+    const reportsLambda = new lambdaNodejs.NodejsFunction(this, 'ReportsLambda', {
+      runtime: lambda.Runtime.NODEJS_24_X,
+
+      entry: 'lambda/reports-handler.ts',
+
+      handler: 'handler',
+
+      bundling: {
+        forceDockerBundling: false,
+      },
+
+      environment: {
+        PRODUCTS_TABLE_NAME: inventoryTable.tableName,
+        SALES_TABLE_NAME: salesTable.tableName,
+        REPORTS_BUCKET_NAME: reportsBucket.bucketName,
+      },
+    });
+
+    inventoryTable.grantReadData(reportsLambda);
+    salesTable.grantReadData(reportsLambda);
+    reportsBucket.grantReadWrite(reportsLambda);
+
     // Telemetry Lambda Function — POST records frontend health/error events
     // as CloudWatch custom metrics (see js/api.js sendTelemetry); GET reads
     // them back as an aggregated summary (see js/api.js getTelemetrySummary)
@@ -532,6 +568,16 @@ export class CdkStack extends cdk.Stack {
     forecastProduct.addMethod(
       'GET',
       new apigateway.LambdaIntegration(forecastLambda),
+      authOptions
+    );
+
+    // /reports
+    const reports = api.root.addResource('reports');
+
+    // GET /reports?type=inventory|sales&from=&to=
+    reports.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(reportsLambda),
       authOptions
     );
 
