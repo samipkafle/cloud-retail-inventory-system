@@ -21,6 +21,8 @@ import {
   getActivities,
   getForecasts,
   getRecommendations,
+  getUsers,
+  createUserAccount,
   deleteProduct,
   friendlyApiError,
   getTelemetrySummary,
@@ -176,6 +178,54 @@ export async function loadTelemetryEvents(limit = 50) {
     state.telemetryEventsError = friendlyApiError(error);
   }
   renderAll();
+}
+
+// Loads the account directory (manager-only, GET /users).
+export async function loadUsers() {
+  try {
+    const response = await getUsers();
+    state.users = Array.isArray(response) ? response : [];
+    state.usersError = null;
+  } catch (error) {
+    state.users = [];
+    state.usersError = friendlyApiError(error);
+  }
+  renderAll();
+}
+
+// Validates the create-account form and creates a Cognito account for a
+// new staff or manager sign-in (FR-01's manager-controlled account
+// creation, replacing the CLI-only admin-create-user flow). POST Function
+export async function handleCreateUserSubmit(event) {
+  event.preventDefault();
+  const email = $("#newUserEmailInput").value.trim();
+  const role = $("#newUserRoleInput").value;
+
+  setFormError("#createUserError");
+  setFormError("#createUserSuccess");
+
+  if (!email) {
+    setFormError("#createUserError", "Enter an email address.");
+    return;
+  }
+
+  const button = $("#createUserButton");
+  button.disabled = true;
+
+  try {
+    const response = await createUserAccount(email, role);
+    setFormError(
+      "#createUserSuccess",
+      response?.message || "Account created — a temporary password has been emailed to the user.",
+    );
+    $("#createUserForm").reset();
+    await addActivity("stock", "Staff account created", `${email} · ${role}`);
+    await loadUsers();
+  } catch (error) {
+    setFormError("#createUserError", friendlyApiError(error));
+  } finally {
+    button.disabled = false;
+  }
 }
 
 // Validates the product form and creates or updates a product. POST or PUT Function

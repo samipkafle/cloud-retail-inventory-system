@@ -12,6 +12,8 @@ import {
   exportInventory,
   exportSales,
   handleApiSubmit,
+  loadUsers,
+  handleCreateUserSubmit,
 } from "./actions.js";
 import {
   closeModal,
@@ -128,6 +130,9 @@ function goToPage(page) {
     if (!state.telemetryEvents) loadTelemetryEvents();
     startTelemetryAutoRefresh();
   }
+  if (page === "team" && !state.users.length) {
+    loadUsers();
+  }
 }
 
 // Connects buttons, forms and page controls to their functions.
@@ -183,6 +188,9 @@ function bindEvents() {
   });
   $("#connectionButton").addEventListener("click", openApiModal);
   $("#apiForm").addEventListener("submit", handleApiSubmit);
+
+  $("#createUserForm").addEventListener("submit", handleCreateUserSubmit);
+  $("#refreshUsersButton").addEventListener("click", () => loadUsers());
 
   $("#exportInventoryButton").addEventListener("click", exportInventory);
   $("#downloadProductsReport").addEventListener("click", exportInventory);

@@ -28,6 +28,7 @@ export function renderAll() {
   renderAiRecommendations();
   renderReports();
   renderMonitoring();
+  renderTeam();
   refreshSaleOptions();
 }
 
@@ -567,4 +568,47 @@ export function renderMonitoring() {
   } else {
     eventsNote.textContent = "Click Refresh to pull recent events from CloudWatch Logs.";
   }
+}
+
+// Converts a Cognito UserStatus into a short human-readable label.
+function accountStatusLabel(status) {
+  if (status === "FORCE_CHANGE_PASSWORD") return "Invited (password not set)";
+  if (status === "CONFIRMED") return "Active";
+  return status || "Unknown";
+}
+
+// Displays the manager-only account directory (GET /users). Renders
+// whatever's cached in state.users — actions.js's loadUsers() fetches it
+// on first visiting the Team page (see goToPage() in app.js), not on every
+// dashboard refresh, since it's a rarely-changing manager-only directory.
+export function renderTeam() {
+  const container = $("#userRows");
+  if (!container) return;
+
+  if (state.usersError) {
+    container.innerHTML = `<div class="empty-state">${icon(
+      "bell",
+    )}<strong>Couldn't load accounts</strong><span>${escapeHtml(state.usersError)}</span></div>`;
+    return;
+  }
+
+  if (!state.users.length) {
+    container.innerHTML = `<div class="empty-state">${icon(
+      "box",
+    )}<strong>No accounts loaded</strong><span>Click Refresh to load the account directory.</span></div>`;
+    return;
+  }
+
+  container.innerHTML = state.users
+    .map(
+      (user) =>
+        `<div class="user-row"><span>${escapeHtml(user.email || user.username)}</span><span class="role-pill role-${
+          user.role
+        }">${escapeHtml(user.role)}</span><small>${escapeHtml(
+          accountStatusLabel(user.status),
+        )}</small><small>${escapeHtml(
+          user.createdAt ? formatDateTime(user.createdAt) : "—",
+        )}</small></div>`,
+    )
+    .join("");
 }

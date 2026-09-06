@@ -24,6 +24,7 @@
     "@aws-cdk/cloud-assembly-schema": "^54.11.0",
     "@aws-sdk/client-cloudwatch": "^3.1116.0",
     "@aws-sdk/client-cloudwatch-logs": "^3.1113.0",
+    "@aws-sdk/client-cognito-identity-provider": "^3.1127.0",
     "@aws-sdk/client-dynamodb": "^3.1106.0",
     "@aws-sdk/client-s3": "^3.1127.0",
     "@aws-sdk/client-sns": "^3.1113.0",

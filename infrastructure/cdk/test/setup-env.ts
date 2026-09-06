@@ -13,3 +13,5 @@ process.env.LOW_STOCK_TOPIC_ARN = 'arn:aws:sns:ap-southeast-2:123456789012:TestT
 process.env.METRIC_NAMESPACE = 'Test/Frontend';
 process.env.AWS_LAMBDA_FUNCTION_NAME = 'TestTelemetryLambda';
 process.env.AUTH_ENABLED = 'true';
+process.env.USER_POOL_ID = 'ap-southeast-2_TestPool';
+process.env.MANAGER_GROUP_NAME = 'manager';

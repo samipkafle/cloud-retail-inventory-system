@@ -34,16 +34,15 @@ The project also demonstrates cloud engineering practices using AWS serverless s
 - CloudWatch-based application monitoring
 - Responsive interface for desktop and mobile devices
 - Real Amazon Cognito sign-in with manager/staff role-based access control
-
-### Planned
-
-- AI-powered demand recommendation engine (Python/scikit-learn) to replace the current rule-based forecast
+- Manager-controlled staff/manager account creation (Team page — Cognito emails the temporary password, no password ever passes through the app)
+- Server-side inventory/sales report generation, stored in S3 with a presigned download link
+- AI-trained demand recommendations (a Python Lambda fitting a linear trend per product), shown as decision support alongside the rule-based forecast
 
 ## Current Authentication Status
 
 The frontend signs in against a real Amazon Cognito User Pool (`amazon-cognito-identity-js`, SRP flow) and attaches the ID token to every API request. The API Gateway Cognito authorizer is enabled on every route, so unauthenticated requests are rejected. Members of the `manager` Cognito group can create, update and delete products; everyone else authenticated (staff) can record sales and view inventory/alerts but not manage the product catalogue.
 
-Public self-sign-up is disabled by design — staff accounts are created by a manager or administrator (`admin-create-user`).
+Public self-sign-up is disabled by design — a manager creates staff/manager accounts from the app's Team page, which emails the new user a temporary password directly via Cognito (no password ever passes through the app or its API).
 
 ## System Architecture
 
@@ -86,13 +85,14 @@ Email Notification
 
 | AWS service | Purpose |
 | --- | --- |
-| Amazon S3 | Hosts the static frontend |
+| Amazon S3 | Hosts the static frontend; stores generated CSV reports privately |
 | API Gateway | Provides the REST API used by the frontend |
-| AWS Lambda | Runs product, sales, activity, alert, inventory and monitoring logic |
-| DynamoDB | Stores products, sales, activities and low-stock alerts |
+| AWS Lambda | Runs product, sales, activity, alert, inventory, reports, recommendation, user-management and monitoring logic (TypeScript, plus one Python function for the recommendation engine) |
+| DynamoDB | Stores products, sales, activities, low-stock alerts and AI recommendations |
 | Amazon SNS | Sends low-stock email notifications |
 | Amazon CloudWatch | Stores logs and frontend monitoring information |
-| Amazon Cognito | User directory and enforced manager/staff role-based authentication |
+| Amazon EventBridge | Triggers the recommendation engine's daily training run |
+| Amazon Cognito | User directory, enforced manager/staff role-based authentication, and manager-controlled account creation |
 | AWS IAM | Controls permissions between AWS services |
 | AWS CDK | Defines and deploys the AWS infrastructure as code |
 
@@ -215,9 +215,17 @@ https://mrfuj9l955.execute-api.ap-southeast-2.amazonaws.com/prod
 | `POST` | `/activities` | Store an audit entry |
 | `GET` | `/inventory` | Retrieve stock status for all products |
 | `GET` | `/alerts` | Retrieve low-stock alert history |
+| `GET` | `/forecast` | Retrieve every product's 14-day sales-velocity forecast, ranked |
+| `GET` | `/forecast/{productId}` | Retrieve one product's forecast |
+| `GET` | `/reports` | Generate an inventory/sales CSV report, stored in S3, returned as a presigned URL |
+| `GET` | `/recommendations` | Retrieve AI-trained demand recommendations, ranked |
+| `GET` | `/users` | Retrieve the account directory (manager-only) |
+| `POST` | `/users` | Create a staff or manager account (manager-only) |
 | `GET` | `/telemetry` | Retrieve a CloudWatch monitoring summary |
 | `POST` | `/telemetry` | Record a frontend monitoring event |
 | `GET` | `/telemetry/events` | Retrieve recent monitoring events |
+
+See [docs/architecture.md](docs/architecture.md) for full request/response detail on each of these.
 
 ### Example Product
 
@@ -330,16 +338,17 @@ Postman is also used to test the REST API endpoints directly.
 - [x] AWS CDK infrastructure and S3 frontend deployment
 - [x] Removal of browser local storage for business records
 - [x] Real Amazon Cognito sign-in with manager/staff role-based access control
+- [x] Backend forecast (FR-09), reports (FR-08), and demand recommendation engine (FR-10) endpoints
+- [x] Manager-controlled staff/manager account creation (Team page)
 
 ### In Progress
 
-- [ ] Add manager-controlled staff account creation (currently CLI-only via an administrator)
 - [ ] Complete final integration and user acceptance testing
 
 ### Possible Future Improvements
 
 - [ ] Host the frontend through HTTPS using CloudFront or another secure host
-- [ ] Replace the rule-based demand calculation with a tested machine-learning model
+- [ ] Extend the recommendation engine beyond a linear trend model (e.g. to capture seasonal/cyclical patterns)
 - [ ] Add automated deployment through a CI/CD pipeline
 - [ ] Store generated report files in Amazon S3
 

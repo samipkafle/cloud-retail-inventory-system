@@ -551,6 +551,43 @@ export class CdkStack extends cdk.Stack {
           authorizationType: apigateway.AuthorizationType.NONE,
         };
 
+    // Users Lambda Function — GET/POST /users (manager-controlled staff
+    // account creation, replacing the CLI-only admin-create-user flow).
+    // Manager-only regardless of AUTH_ENABLED (see requireManager() in the
+    // handler) since this endpoint controls who can sign in at all.
+    const usersLambda = new lambdaNodejs.NodejsFunction(this, 'UsersLambda', {
+      runtime: lambda.Runtime.NODEJS_24_X,
+
+      entry: 'lambda/users-handler.ts',
+
+      handler: 'handler',
+
+      bundling: {
+        forceDockerBundling: false,
+      },
+
+      environment: {
+        USER_POOL_ID: userPool.userPoolId,
+        MANAGER_GROUP_NAME: 'manager',
+        AUTH_ENABLED: String(AUTH_ENABLED),
+      },
+    });
+
+    // The UserPool construct has no grantXyz() convenience methods like
+    // DynamoDB Table does, so the admin actions are scoped explicitly to
+    // this specific pool's ARN rather than "*".
+    usersLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: [
+          'cognito-idp:AdminCreateUser',
+          'cognito-idp:AdminAddUserToGroup',
+          'cognito-idp:ListUsers',
+          'cognito-idp:ListUsersInGroup',
+        ],
+        resources: [userPool.userPoolArn],
+      })
+    );
+
     // /products
     const products = api.root.addResource('products');
 
@@ -643,6 +680,23 @@ export class CdkStack extends cdk.Stack {
     inventory.addMethod(
       'GET',
       new apigateway.LambdaIntegration(inventoryStatusLambda),
+      authOptions
+    );
+
+    // /users
+    const users = api.root.addResource('users');
+
+    // GET /users (list accounts, manager-only)
+    users.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(usersLambda),
+      authOptions
+    );
+
+    // POST /users (create a staff/manager account, manager-only)
+    users.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(usersLambda),
       authOptions
     );
 

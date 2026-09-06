@@ -70,6 +70,9 @@
       <symbol id="icon-refresh" viewBox="0 0 24 24">
         <path d="M20 7v5h-5M4 17v-5h5M6.1 9a7 7 0 0 1 11.7-2L20 12M4 12l2.2 5a7 7 0 0 0 11.7-2" />
       </symbol>
+      <symbol id="icon-users" viewBox="0 0 24 24">
+        <path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 21c0-3.3 2.7-6 6-6s6 2.7 6 6M15.5 5.1a3 3 0 0 1 0 5.8M21 21c0-2.8-1.8-5.1-4.3-5.8" />
+      </symbol>
       <symbol id="icon-cloud" viewBox="0 0 24 24">
         <path d="M17.5 19H7a5 5 0 1 1 1.7-9.7A6 6 0 0 1 20 12a3.5 3.5 0 0 1-2.5 7Z" />
       </symbol>
@@ -170,6 +173,9 @@
           </button>
           <button class="nav-button" type="button" data-page="monitoring" data-roles="manager,maintainer">
             <svg><use href="#icon-cloud"></use></svg><span>Monitoring</span>
+          </button>
+          <button class="nav-button" type="button" data-page="team" data-roles="manager">
+            <svg><use href="#icon-users"></use></svg><span>Team</span>
           </button>
         </nav>
 
@@ -468,6 +474,31 @@
               <div class="card-head"><div><span class="section-kicker">CloudWatch Logs Insights</span><h2>Recent frontend events</h2></div><small>All sessions · last 24 hours</small></div>
               <div id="telemetryEventLog" class="monitor-log"></div>
               <p id="telemetryEventsNote" class="integration-note"></p>
+            </article>
+          </section>
+
+          <section id="teamPage" class="page" data-page="team">
+            <div class="page-heading">
+              <div><p>Access control</p><h1>Team</h1><span>Create staff and manager accounts. New accounts get an emailed temporary password from Cognito — no password ever passes through this app.</span></div>
+            </div>
+            <article class="content-card team-form-card">
+              <div class="card-head"><div><span class="section-kicker">Add an account</span><h2>Create a staff or manager sign-in</h2></div></div>
+              <form id="createUserForm" class="modal-form team-form">
+                <label>Email address<input id="newUserEmailInput" name="email" type="email" placeholder="name@greenleaf.demo" required /></label>
+                <label>Role
+                  <select id="newUserRoleInput" name="role">
+                    <option value="staff">Staff — record sales, view inventory/alerts</option>
+                    <option value="manager">Manager — full access, including managing products and accounts</option>
+                  </select>
+                </label>
+                <button id="createUserButton" class="primary-button" type="submit"><svg><use href="#icon-plus"></use></svg>Create account</button>
+                <p id="createUserError" class="form-error" hidden></p>
+                <p id="createUserSuccess" class="form-success" hidden></p>
+              </form>
+            </article>
+            <article class="content-card team-list-card">
+              <div class="card-head"><div><span class="section-kicker">Directory</span><h2>Existing accounts</h2></div><button id="refreshUsersButton" class="secondary-button" type="button"><svg><use href="#icon-refresh"></use></svg>Refresh</button></div>
+              <div id="userRows" class="user-rows"></div>
             </article>
           </section>
         </main>

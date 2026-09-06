@@ -120,6 +120,17 @@ export function getRecommendations() {
   return apiRequest("/recommendations");
 }
 
+// Manager-only account management (replaces the CLI-only admin-create-user
+// flow). Cognito emails the temporary password directly to the new user —
+// the API never returns or handles a password value.
+export function getUsers() {
+  return apiRequest("/users");
+}
+
+export function createUserAccount(email, role) {
+  return apiRequest("/users", { method: "POST", body: { email, role } });
+}
+
 // Records an audit entry through AWS.
 export function recordActivity(activity) {
   return apiRequest("/activities", { method: "POST", body: activity });

@@ -34,6 +34,8 @@ export const state = {
   activities: [],
   forecasts: [],
   recommendations: [],
+  users: [],
+  usersError: null,
   role: "manager",
   user: ROLE_PROFILES.manager,
   currentPage: "overview",

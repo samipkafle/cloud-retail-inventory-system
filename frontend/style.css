@@ -418,6 +418,12 @@ svg {
   font-size: 12px;
 }
 
+.form-success {
+  margin: -4px 0 14px;
+  color: var(--green);
+  font-size: 12px;
+}
+
 /* Application shell */
 .app-shell {
   min-height: 100vh;
@@ -1972,6 +1978,68 @@ td {
   .ai-recommendation-row {
     grid-template-columns: 1fr;
     gap: 8px;
+  }
+}
+
+/* Team */
+.team-form-card {
+  max-width: 480px;
+  padding: 22px;
+  margin-bottom: 20px;
+}
+
+.team-form {
+  margin-top: 16px;
+}
+
+.team-list-card {
+  padding: 22px;
+}
+
+.user-rows {
+  margin-top: 16px;
+}
+
+.user-row {
+  display: grid;
+  grid-template-columns: 1.6fr 0.7fr 0.9fr 100px;
+  gap: 15px;
+  align-items: center;
+  padding: 13px 0;
+  border-top: 1px solid #edf1ee;
+  font-size: 11px;
+}
+
+.user-row:first-child {
+  border-top: none;
+}
+
+.user-row small {
+  color: var(--muted);
+}
+
+.role-pill {
+  justify-self: start;
+  padding: 4px 9px;
+  border-radius: 6px;
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.role-pill.role-manager {
+  color: var(--green);
+  background: var(--green-soft);
+}
+
+.role-pill.role-staff {
+  color: var(--muted);
+  background: color-mix(in srgb, var(--muted) 12%, white);
+}
+
+@media (max-width: 860px) {
+  .user-row {
+    grid-template-columns: 1fr 1fr;
   }
 }
 

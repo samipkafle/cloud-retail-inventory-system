@@ -138,6 +138,7 @@ Partition key: `activityId` (String, UUID)
 | ReportsLambda | `lambda/reports-handler.ts` | `GET /reports` | Read RetailInventory, Read RetailSales, read/write the private Reports S3 bucket |
 | RecommendationEngineLambda (Python) | `lambda-python/recommendation-engine/handler.py` | None — runs on a daily EventBridge schedule, not an API route | Read RetailInventory, Read RetailSales, write RetailRecommendations |
 | RecommendationsLambda | `lambda/recommendations-handler.ts` | `GET /recommendations` | Read RetailRecommendations |
+| UsersLambda | `lambda/users-handler.ts` | `GET/POST /users` | Cognito admin actions (`AdminCreateUser`, `AdminAddUserToGroup`, `ListUsers`, `ListUsersInGroup`), scoped to the User Pool's ARN — no DynamoDB access |
 | TelemetryLambda | `lambda/telemetry-handler.ts` | `POST/GET /telemetry`, `GET /telemetry/events` | None (CloudWatch metrics + Logs Insights only) |
 
 All run on `NODEJS_24_X`, bundled per-function via `NodejsFunction` (esbuild, no Docker).
@@ -149,6 +150,7 @@ All run on `NODEJS_24_X`, bundled per-function via `NodejsFunction` (esbuild, no
 - **`manager` Cognito group**: members can create/update/delete products; everyone else authenticated is treated as staff (record sales, view inventory/alerts, but not manage the catalogue).
 - **Enforcement is a single switch**: `AUTH_ENABLED` in `cdk-stack.ts` controls both the API Gateway authorizer (`COGNITO` vs `NONE` on every route) and an `AUTH_ENABLED` Lambda env var that `inventory-handler.ts`'s `requireManager()` checks before allowing product writes. Both must agree — the Lambda-side check is a defence-in-depth backstop, not the primary enforcement (the API Gateway authorizer is).
 - **Frontend integration** (`frontend/js/auth.js`, `frontend/js/api.js`): the login form calls Cognito directly (no server-side session), decodes the ID token's `cognito:groups` claim to pick the app's manager/staff UI role, and attaches the raw ID token as the `Authorization` header on every subsequent API call.
+- **Manager-controlled account creation**: self-sign-up is disabled on the User Pool, so `GET/POST /users` (`users-handler.ts`, manager-only) is the only way to create new accounts short of the AWS Console/CLI. `AdminCreateUser` lets Cognito auto-generate and email the temporary password directly to the new user — neither the creating manager nor the API ever sees or handles that password. The frontend's Team page (`frontend/index.html`'s `#teamPage`, `renderTeam()` in `render.js`) is the manager-facing UI for this.
 - **CORS on error responses**: API Gateway's own `UNAUTHORIZED`/`ACCESS_DENIED` Gateway Responses bypass Lambda entirely (and therefore the CORS headers each Lambda adds itself), so they needed explicit `addGatewayResponse` CORS headers — otherwise a browser reports a real 401/403 as an opaque network/CORS failure instead of a readable error.
 
 See [testing.md](testing.md) for the verification evidence for all of the above.
@@ -169,6 +171,8 @@ See [testing.md](testing.md) for the verification evidence for all of the above.
 | GET | `/forecast/{productId}` | Forecast | Any authenticated user |
 | GET | `/reports` | Reports | Any authenticated user |
 | GET | `/recommendations` | Recommendations | Any authenticated user |
+| GET | `/users` | Users | `manager` group only |
+| POST | `/users` | Users | `manager` group only |
 | GET | `/alerts` | Alerts | Any authenticated user |
 | GET | `/activities` | Activity | Any authenticated user |
 | POST | `/activities` | Activity | Any authenticated user |
