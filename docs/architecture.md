@@ -44,7 +44,7 @@ Email notification
 
 | Service | Purpose | CDK construct |
 | --- | --- | --- |
-| Amazon S3 | Hosts the static frontend as a public website | `FrontendBucket` + `BucketDeployment` |
+| Amazon S3 | Hosts the static frontend as a public website (`FrontendBucket`); stores generated CSV reports privately, served only via presigned URL (`ReportsBucket`) | `FrontendBucket` + `BucketDeployment`, `ReportsBucket` |
 | Amazon API Gateway | REST API (`InventoryApi`), edge-optimized, Cognito-authorized | `RestApi` |
 | AWS Lambda | 6 functions — see [Lambda functions](#lambda-functions) | `NodejsFunction` |
 | Amazon DynamoDB | 4 tables — see [Data model](#data-model) | `dynamodb.Table` |
@@ -120,6 +120,7 @@ Partition key: `activityId` (String, UUID)
 | ActivityLambda | `lambda/activity-handler.ts` | `GET/POST /activities` | Read/write RetailActivities |
 | InventoryStatusLambda | `lambda/inventory-status-handler.ts` | `GET /inventory` | Read RetailInventory |
 | ForecastLambda | `lambda/forecast-handler.ts` | `GET /forecast`, `GET /forecast/{productId}` | Read RetailInventory, Query RetailSales (`productId-soldAt-index` GSI) |
+| ReportsLambda | `lambda/reports-handler.ts` | `GET /reports` | Read RetailInventory, Read RetailSales, read/write the private Reports S3 bucket |
 | TelemetryLambda | `lambda/telemetry-handler.ts` | `POST/GET /telemetry`, `GET /telemetry/events` | None (CloudWatch metrics + Logs Insights only) |
 
 All run on `NODEJS_24_X`, bundled per-function via `NodejsFunction` (esbuild, no Docker).
@@ -149,6 +150,7 @@ See [testing.md](testing.md) for the verification evidence for all of the above.
 | GET | `/inventory` | InventoryStatus | Any authenticated user |
 | GET | `/forecast` | Forecast | Any authenticated user |
 | GET | `/forecast/{productId}` | Forecast | Any authenticated user |
+| GET | `/reports` | Reports | Any authenticated user |
 | GET | `/alerts` | Alerts | Any authenticated user |
 | GET | `/activities` | Activity | Any authenticated user |
 | POST | `/activities` | Activity | Any authenticated user |
